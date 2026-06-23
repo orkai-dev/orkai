@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"os"
 	"strings"
 
 	"github.com/orkai-dev/orkai/apps/api/internal/model"
@@ -22,24 +23,41 @@ func NewSettingService(s store.Store, targets *orchestrator.TargetRegistry, logg
 	return &SettingService{store: s, targets: targets, logger: logger}
 }
 
-// InitDefaults runs on server startup. Detects K3s node IP and sets default base domain.
+// InitDefaults runs on server startup. Detects the server IP and sets a default
+// base domain. An explicit SERVER_IP env var (the public IP, which the installer
+// knows) always wins and is re-applied on every startup, so it also corrects
+// existing installs that previously auto-detected a private node IP.
 func (s *SettingService) InitDefaults(ctx context.Context) error {
+	envIP := strings.TrimSpace(os.Getenv("SERVER_IP"))
+	if envIP != "" {
+		// Authoritative override, reapplied each startup.
+		if cur, _ := s.store.Settings().Get(ctx, model.SettingServerIP); cur != envIP {
+			_ = s.store.Settings().Set(ctx, model.SettingServerIP, envIP)
+			s.logger.Info("server IP set from SERVER_IP env", slog.String("ip", envIP))
+		}
+	}
+
 	done, _ := s.store.Settings().Get(ctx, model.SettingSetupDone)
 	if done == "true" {
 		return nil
 	}
 
-	// Try to get IP from K3s control-plane node first
-	ip := s.detectK3sNodeIP(ctx)
+	// First-run defaults: prefer the explicit env IP, then the K3s node IP, then
+	// local network detection. On cloud VMs the node IP is private, so SERVER_IP
+	// should carry the public IP.
+	ip := envIP
 	if ip == "" {
-		// Fallback to local network detection
-		ip = detectLocalIP()
+		ip = s.detectK3sNodeIP(ctx)
+		if ip == "" {
+			ip = detectLocalIP()
+		}
+		if ip != "" {
+			_ = s.store.Settings().Set(ctx, model.SettingServerIP, ip)
+		}
 	}
 
 	if ip != "" {
-		_ = s.store.Settings().Set(ctx, model.SettingServerIP, ip)
 		s.logger.Info("detected server IP", slog.String("ip", ip))
-
 		existing, _ := s.store.Settings().Get(ctx, model.SettingBaseDomain)
 		if existing == "" {
 			baseDomain := fmt.Sprintf("%s.sslip.io", ip)

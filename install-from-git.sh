@@ -382,6 +382,7 @@ Environment=SETUP_SECRET=${SETUP_SECRET}
 Environment=K8S_IN_CLUSTER=false
 Environment=KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 Environment=APP_URL=http://${SERVER_IP}:3000
+Environment=SERVER_IP=${SERVER_IP}
 Environment=SERVER_PORT=3000
 Environment=WEB_DIST_DIR=$SRC_DIR/apps/web/dist
 Environment=GIN_MODE=release

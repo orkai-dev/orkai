@@ -209,6 +209,7 @@ services:
       K8S_IN_CLUSTER: "false"
       KUBECONFIG: /etc/rancher/k3s/k3s.yaml
       APP_URL: http://${SERVER_IP}:3000
+      SERVER_IP: "${SERVER_IP}"
       SERVER_PORT: "8080"
     volumes:
       - /etc/rancher/k3s/k3s.yaml:/etc/rancher/k3s/k3s.yaml:ro
