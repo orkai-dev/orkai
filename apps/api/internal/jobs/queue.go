@@ -40,7 +40,13 @@ func NewQueue(db *bun.DB) *Queue {
 // EnsureSchema creates the PGMQ extension and orkai_jobs queue if missing.
 func (q *Queue) EnsureSchema(ctx context.Context) error {
 	if _, err := q.db.ExecContext(ctx, `CREATE EXTENSION IF NOT EXISTS pgmq`); err != nil {
-		return fmt.Errorf("create pgmq extension: %w", err)
+		// Stock Postgres builds (e.g. distro packages) may not ship the pgmq
+		// extension files, so CREATE EXTENSION fails. Tolerate this when pgmq
+		// has been installed as raw SQL (the "SQL-only" install), which provides
+		// the same pgmq.* functions without a registered extension.
+		if !q.pgmqFunctionsPresent(ctx) {
+			return fmt.Errorf("create pgmq extension: %w", err)
+		}
 	}
 	if _, err := q.db.ExecContext(ctx, `SELECT pgmq.create(?)`, QueueName); err != nil {
 		if !isQueueExistsError(err) {
@@ -48,6 +54,21 @@ func (q *Queue) EnsureSchema(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+// pgmqFunctionsPresent reports whether the pgmq schema's functions exist,
+// which is the case after either an extension install or a SQL-only install.
+func (q *Queue) pgmqFunctionsPresent(ctx context.Context) bool {
+	var present bool
+	err := q.db.NewRaw(`SELECT EXISTS (
+		SELECT 1 FROM pg_proc p
+		JOIN pg_namespace n ON n.oid = p.pronamespace
+		WHERE n.nspname = 'pgmq' AND p.proname = 'create'
+	)`).Scan(ctx, &present)
+	if err != nil {
+		return false
+	}
+	return present
 }
 
 func isQueueExistsError(err error) bool {

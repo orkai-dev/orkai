@@ -216,7 +216,7 @@ services:
       - ${INSTALL_DIR}:/opt/orkai
 
   postgres:
-    image: postgres:18-alpine
+    image: ghcr.io/pgmq/pg18-pgmq:v1.11.1
     container_name: orkai-postgres
     restart: unless-stopped
     ports:

@@ -14,6 +14,7 @@ SERVICE_FILE="/etc/systemd/system/orkai.service"
 
 GO_VERSION="1.25.0"
 BUN_VERSION="latest"
+PGMQ_VERSION="v1.11.1"
 
 # ── Colors ──────────────────────────────────────────────────────
 RED='\033[0;31m'
@@ -97,13 +98,49 @@ install_bun() {
         return
     fi
 
-    info "Installing Bun..."
-    curl -fsSL https://bun.sh/install | bash >/dev/null 2>&1
+    if ! command -v unzip >/dev/null 2>&1; then
+        info "Installing unzip (required for Bun)..."
+        if command -v apt-get >/dev/null 2>&1; then
+            apt-get update -qq && apt-get install -y -qq unzip
+        elif command -v dnf >/dev/null 2>&1; then
+            dnf install -y -q unzip
+        elif command -v yum >/dev/null 2>&1; then
+            yum install -y -q unzip
+        else
+            fail "unzip is required. Install it and re-run."
+        fi
+    fi
 
-    # Make bun available system-wide
-    BUN_BIN="$HOME/.bun/bin"
-    if [ -d "$BUN_BIN" ]; then
-        ln -sf "$BUN_BIN/bun" /usr/local/bin/bun
+    case "$ARCH" in
+        amd64) BUN_TARGET="linux-x64" ;;
+        arm64) BUN_TARGET="linux-aarch64" ;;
+    esac
+
+    BUN_INSTALL_DIR="/opt/bun"
+    BUN_BIN="$BUN_INSTALL_DIR/bin"
+    BUN_ZIP="/tmp/bun-${BUN_TARGET}.zip"
+    BUN_URI="https://github.com/oven-sh/bun/releases/latest/download/bun-${BUN_TARGET}.zip"
+
+    info "Installing Bun (downloading ${BUN_TARGET} binary)..."
+    if ! curl -fsSL --connect-timeout 30 --max-time 300 --progress-bar \
+        "$BUN_URI" -o "$BUN_ZIP"; then
+        rm -f "$BUN_ZIP"
+        fail "Failed to download Bun from $BUN_URI (check network / GitHub access)"
+    fi
+
+    rm -rf "$BUN_INSTALL_DIR"
+    mkdir -p "$BUN_BIN"
+    if ! unzip -oqd "$BUN_BIN" "$BUN_ZIP"; then
+        rm -f "$BUN_ZIP"
+        fail "Failed to extract Bun archive"
+    fi
+
+    mv "$BUN_BIN/bun-${BUN_TARGET}/bun" "$BUN_BIN/bun"
+    rm -rf "$BUN_BIN/bun-${BUN_TARGET}" "$BUN_ZIP"
+    chmod +x "$BUN_BIN/bun"
+
+    ln -sf "$BUN_BIN/bun" /usr/local/bin/bun
+    if [ -f "$BUN_BIN/bunx" ]; then
         ln -sf "$BUN_BIN/bunx" /usr/local/bin/bunx
     fi
 
@@ -256,6 +293,36 @@ setup_database() {
     ok "Database ready"
 }
 
+# ── Install PGMQ (job queue) ────────────────────────────────────
+# Stock Postgres (apt/yum) does not ship the pgmq extension, so we install it
+# via the upstream "SQL-only" definition as the orkai DB owner. The API tolerates
+# a missing extension when these pgmq.* functions are present.
+install_pgmq() {
+    . "$ENV_FILE"
+
+    if PGPASSWORD="$DB_PASSWORD" psql -h 127.0.0.1 -U orkai -d orkai -tAc \
+        "SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='pgmq' AND p.proname='create'" 2>/dev/null | grep -q 1; then
+        ok "PGMQ already installed"
+        return
+    fi
+
+    info "Installing PGMQ job queue (${PGMQ_VERSION})..."
+    PGMQ_SQL="/tmp/pgmq-${PGMQ_VERSION}.sql"
+    PGMQ_URL="https://raw.githubusercontent.com/pgmq/pgmq/${PGMQ_VERSION}/pgmq-extension/sql/pgmq.sql"
+    if ! curl -fsSL --connect-timeout 30 --max-time 120 "$PGMQ_URL" -o "$PGMQ_SQL"; then
+        rm -f "$PGMQ_SQL"
+        fail "Failed to download PGMQ SQL from $PGMQ_URL (check network / GitHub access)"
+    fi
+
+    if ! PGPASSWORD="$DB_PASSWORD" psql -h 127.0.0.1 -U orkai -d orkai \
+        -v ON_ERROR_STOP=1 -f "$PGMQ_SQL" >/dev/null 2>&1; then
+        rm -f "$PGMQ_SQL"
+        fail "Failed to install PGMQ into the orkai database"
+    fi
+    rm -f "$PGMQ_SQL"
+    ok "PGMQ installed"
+}
+
 # ── Clone and build ─────────────────────────────────────────────
 clone_and_build() {
     mkdir -p "$INSTALL_DIR"
@@ -384,6 +451,7 @@ main() {
     configure_traefik_tls
     generate_secrets
     setup_database
+    install_pgmq
     clone_and_build
     create_service
     summary
