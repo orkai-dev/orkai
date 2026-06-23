@@ -109,6 +109,80 @@ func TestRefreshECRSecretsListError(t *testing.T) {
 	r.refreshECRSecrets(context.Background()) // should not panic
 }
 
+func TestResolveRegistryConfigNonECRPassthrough(t *testing.T) {
+	fs := testsupport.NewFakeStore()
+	cfg := json.RawMessage(`{"username":"u","password":"p"}`)
+	out, err := resolveRegistryConfig(context.Background(), fs, uuid.New(), "dockerhub", cfg)
+	require.NoError(t, err)
+	assert.Equal(t, cfg, out)
+}
+
+func TestResolveRegistryConfigECRStaticKeysPassthrough(t *testing.T) {
+	// An ECR config carrying its own static keys (no cloud_account_id) is left
+	// untouched.
+	fs := testsupport.NewFakeStore()
+	cfg := json.RawMessage(`{"region":"us-east-1","access_key":"AKIA","secret_key":"sk"}`)
+	out, err := resolveRegistryConfig(context.Background(), fs, uuid.New(), "ecr", cfg)
+	require.NoError(t, err)
+	assert.Equal(t, cfg, out)
+}
+
+func TestResolveRegistryConfigCloudAccountStaticKeys(t *testing.T) {
+	orgID := uuid.New()
+	accID := uuid.New()
+	fs := testsupport.NewFakeStore()
+	fs.SharedResourcesStore.GetByIDFn = func(ctx context.Context, id uuid.UUID) (*model.SharedResource, error) {
+		assert.Equal(t, accID, id)
+		return &model.SharedResource{
+			OrgID:    orgID,
+			Type:     model.ResourceCloudAccount,
+			Provider: "aws",
+			Config:   json.RawMessage(`{"auth_mode":"access_key","access_key_id":"AKIA","secret_access_key":"sek"}`),
+		}, nil
+	}
+	cfg := json.RawMessage(`{"region":"us-east-1","cloud_account_id":"` + accID.String() + `"}`)
+	out, err := resolveRegistryConfig(context.Background(), fs, orgID, "ecr", cfg)
+	require.NoError(t, err)
+	var m map[string]any
+	require.NoError(t, json.Unmarshal(out, &m))
+	assert.Equal(t, "AKIA", m["access_key"])
+	assert.Equal(t, "sek", m["secret_key"])
+	assert.Equal(t, "us-east-1", m["region"])
+}
+
+func TestResolveRegistryConfigCloudAccountCrossOrgRejected(t *testing.T) {
+	accID := uuid.New()
+	fs := testsupport.NewFakeStore()
+	fs.SharedResourcesStore.GetByIDFn = func(ctx context.Context, id uuid.UUID) (*model.SharedResource, error) {
+		return &model.SharedResource{
+			OrgID:    uuid.New(), // different org
+			Type:     model.ResourceCloudAccount,
+			Provider: "aws",
+			Config:   json.RawMessage(`{}`),
+		}, nil
+	}
+	cfg := json.RawMessage(`{"region":"us-east-1","cloud_account_id":"` + accID.String() + `"}`)
+	_, err := resolveRegistryConfig(context.Background(), fs, uuid.New(), "ecr", cfg)
+	require.ErrorContains(t, err, "cloud account not found")
+}
+
+func TestResolveRegistryConfigCloudAccountNonAWSRejected(t *testing.T) {
+	orgID := uuid.New()
+	accID := uuid.New()
+	fs := testsupport.NewFakeStore()
+	fs.SharedResourcesStore.GetByIDFn = func(ctx context.Context, id uuid.UUID) (*model.SharedResource, error) {
+		return &model.SharedResource{
+			OrgID:    orgID,
+			Type:     model.ResourceCloudAccount,
+			Provider: "cloudflare",
+			Config:   json.RawMessage(`{}`),
+		}, nil
+	}
+	cfg := json.RawMessage(`{"region":"us-east-1","cloud_account_id":"` + accID.String() + `"}`)
+	_, err := resolveRegistryConfig(context.Background(), fs, orgID, "ecr", cfg)
+	require.ErrorContains(t, err, "not an AWS account")
+}
+
 func TestRefreshECRSecretsSkipsNonECR(t *testing.T) {
 	rid := uuid.New()
 	fs := testsupport.NewFakeStore()

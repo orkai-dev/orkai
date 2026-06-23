@@ -933,6 +933,9 @@ type FakeSharedResourceStore struct {
 	UpdateFn    func(ctx context.Context, resource *model.SharedResource) error
 	DeleteFn    func(ctx context.Context, id uuid.UUID) error
 	ListByOrgFn func(ctx context.Context, orgID uuid.UUID, resourceType string) ([]model.SharedResource, error)
+
+	FindRegistryByCloudAccountFn      func(ctx context.Context, accountID uuid.UUID) (*model.SharedResource, error)
+	FindObjectStorageByCloudAccountFn func(ctx context.Context, accountID uuid.UUID) (*model.SharedResource, error)
 }
 
 func (f *FakeSharedResourceStore) GetByID(ctx context.Context, id uuid.UUID) (*model.SharedResource, error) {
@@ -966,6 +969,20 @@ func (f *FakeSharedResourceStore) Delete(ctx context.Context, id uuid.UUID) erro
 func (f *FakeSharedResourceStore) ListByOrg(ctx context.Context, orgID uuid.UUID, resourceType string) ([]model.SharedResource, error) {
 	if f.ListByOrgFn != nil {
 		return f.ListByOrgFn(ctx, orgID, resourceType)
+	}
+	return nil, nil
+}
+
+func (f *FakeSharedResourceStore) FindRegistryByCloudAccount(ctx context.Context, accountID uuid.UUID) (*model.SharedResource, error) {
+	if f.FindRegistryByCloudAccountFn != nil {
+		return f.FindRegistryByCloudAccountFn(ctx, accountID)
+	}
+	return nil, nil
+}
+
+func (f *FakeSharedResourceStore) FindObjectStorageByCloudAccount(ctx context.Context, accountID uuid.UUID) (*model.SharedResource, error) {
+	if f.FindObjectStorageByCloudAccountFn != nil {
+		return f.FindObjectStorageByCloudAccountFn(ctx, accountID)
 	}
 	return nil, nil
 }

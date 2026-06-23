@@ -319,6 +319,16 @@ type SharedResourceStore interface {
 	Update(ctx context.Context, resource *model.SharedResource) error
 	Delete(ctx context.Context, id uuid.UUID) error
 	ListByOrg(ctx context.Context, orgID uuid.UUID, resourceType string) ([]model.SharedResource, error)
+	// FindRegistryByCloudAccount returns a registry resource that references the
+	// given cloud account in its config (e.g. an ECR registry resolving its
+	// credentials from the account), or nil if none. Used to block deletion of an
+	// in-use cloud account.
+	FindRegistryByCloudAccount(ctx context.Context, accountID uuid.UUID) (*model.SharedResource, error)
+	// FindObjectStorageByCloudAccount returns an object-storage resource that
+	// references the given cloud account in its config (e.g. an S3 backup target
+	// resolving its credentials from the account), or nil if none. Used to block
+	// deletion of an in-use cloud account.
+	FindObjectStorageByCloudAccount(ctx context.Context, accountID uuid.UUID) (*model.SharedResource, error)
 }
 
 type CronJobStore interface {

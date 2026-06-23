@@ -222,6 +222,34 @@ func TestResourceDeleteInUseByRegistry(t *testing.T) {
 	require.ErrorContains(t, err, "registry")
 }
 
+func TestResourceDeleteInUseByEcrCloudAccount(t *testing.T) {
+	orgID := uuid.New()
+	rid := uuid.New()
+	fs := testsupport.NewFakeStore()
+	fs.SharedResourcesStore.GetByIDFn = func(ctx context.Context, id uuid.UUID) (*model.SharedResource, error) {
+		return &model.SharedResource{BaseModel: model.BaseModel{ID: rid}, OrgID: orgID}, nil
+	}
+	fs.SharedResourcesStore.FindRegistryByCloudAccountFn = func(ctx context.Context, accountID uuid.UUID) (*model.SharedResource, error) {
+		return &model.SharedResource{Name: "ecr-prod"}, nil
+	}
+	s := newResourceService(fs)
+	require.ErrorContains(t, s.Delete(context.Background(), orgID, rid), "registry")
+}
+
+func TestResourceDeleteInUseByObjectStorageCloudAccount(t *testing.T) {
+	orgID := uuid.New()
+	rid := uuid.New()
+	fs := testsupport.NewFakeStore()
+	fs.SharedResourcesStore.GetByIDFn = func(ctx context.Context, id uuid.UUID) (*model.SharedResource, error) {
+		return &model.SharedResource{BaseModel: model.BaseModel{ID: rid}, OrgID: orgID}, nil
+	}
+	fs.SharedResourcesStore.FindObjectStorageByCloudAccountFn = func(ctx context.Context, accountID uuid.UUID) (*model.SharedResource, error) {
+		return &model.SharedResource{Name: "backups-s3"}, nil
+	}
+	s := newResourceService(fs)
+	require.ErrorContains(t, s.Delete(context.Background(), orgID, rid), "object storage")
+}
+
 func TestResourceDeleteAppListError(t *testing.T) {
 	orgID := uuid.New()
 	fs := testsupport.NewFakeStore()

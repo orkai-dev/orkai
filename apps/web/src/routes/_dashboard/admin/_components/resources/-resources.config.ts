@@ -230,10 +230,23 @@ export const CLOUD_ACCOUNT_FIELDS_BY_PROVIDER: Record<string, FieldDef[]> = {
   ],
 };
 
-// Registry fields differ per provider. ECR authenticates with IAM keys and
-// fetches a short-lived token, so it has no static username/password.
+// Registry fields differ per provider. ECR authenticates with IAM credentials
+// and fetches a short-lived token, so it has no static username/password. The
+// credentials come either from static keys entered here or from a connected AWS
+// cloud account (rendered as a dedicated picker in the resource sheet, not via
+// these field defs).
 export const REGISTRY_FIELDS_BY_PROVIDER: Record<string, FieldDef[]> = {
   ecr: [
+    {
+      key: "auth_mode",
+      label: "Authentication",
+      type: "select",
+      options: [
+        { value: "access_key", label: "Access Keys" },
+        { value: "cloud_account", label: "AWS Cloud Account" },
+      ],
+      help: "Access Keys: static IAM keys entered below. AWS Cloud Account: reuse a connected AWS account's credentials (static keys, instance role, or assume role) — nothing to re-enter, and rotation propagates automatically.",
+    },
     { key: "region", label: "Region", type: "text", placeholder: "us-east-1", required: true },
     {
       key: "access_key",
@@ -241,6 +254,7 @@ export const REGISTRY_FIELDS_BY_PROVIDER: Record<string, FieldDef[]> = {
       type: "text",
       placeholder: "AKIA...",
       required: true,
+      showIf: (c) => (c.auth_mode ?? "access_key") === "access_key",
     },
     {
       key: "secret_key",
@@ -248,6 +262,7 @@ export const REGISTRY_FIELDS_BY_PROVIDER: Record<string, FieldDef[]> = {
       type: "password",
       placeholder: "Secret key",
       required: true,
+      showIf: (c) => (c.auth_mode ?? "access_key") === "access_key",
     },
   ],
 };

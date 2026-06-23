@@ -69,7 +69,18 @@ export function ResourceSheet({
         setName(resource.name);
         setProvider(resource.provider);
         const raw = typeof resource.config === "object" && resource.config ? resource.config : {};
-        setConfig(configWithoutTags(raw));
+        const initial = configWithoutTags(raw);
+        // A cloud-account-backed ECR registry persists only {cloud_account_id,
+        // region} (no auth_mode), so derive the toggle from the reference.
+        if (
+          resource.type === "registry" &&
+          resource.provider === "ecr" &&
+          initial.cloud_account_id &&
+          !initial.auth_mode
+        ) {
+          initial.auth_mode = "cloud_account";
+        }
+        setConfig(initial);
         setTags(extractTagsFromConfig(raw));
       } else {
         setName("");
@@ -89,7 +100,17 @@ export function ResourceSheet({
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
-      const payload = buildResourceConfig(config, tags);
+      // For ECR, drop the fields that don't belong to the selected auth mode so
+      // toggling never sends both static keys and a cloud-account reference.
+      let effectiveConfig = config;
+      if (type === "registry" && provider === "ecr") {
+        const { access_key, secret_key, cloud_account_id, ...rest } = config;
+        effectiveConfig =
+          config.auth_mode === "cloud_account"
+            ? { ...rest, cloud_account_id }
+            : { ...rest, access_key, secret_key };
+      }
+      const payload = buildResourceConfig(effectiveConfig, tags);
       if (isEdit && resource) {
         updateMutation.mutate(
           { id: resource.id, name, provider, config: payload },
@@ -123,6 +144,10 @@ export function ResourceSheet({
   // so they remain fully editable.
   const isS3FromAccount =
     type === "object_storage" && provider === "aws_s3" && (!isEdit || !!config.cloud_account_id);
+  // ECR can resolve credentials from a connected AWS cloud account instead of
+  // static keys; the operator picks the account and a region.
+  const isEcrFromAccount =
+    type === "registry" && provider === "ecr" && config.auth_mode === "cloud_account";
   const { data: cloudAccounts } = useResources("cloud_account");
   const accounts = (cloudAccounts ?? []).filter(
     (a: SharedResource) => a.type === "cloud_account" && a.provider === "aws",
@@ -133,6 +158,11 @@ export function ResourceSheet({
     isFetching: bucketsLoading,
     error: bucketsError,
   } = useResourceBuckets(isS3FromAccount ? cloudAccountId : "");
+
+  // Block submit in cloud-account mode until an account is picked, otherwise the
+  // registry would persist with no credentials and only fail later at pull/test
+  // time with an opaque AWS credential-chain error.
+  const submitDisabled = saving || (isEcrFromAccount && !cloudAccountId);
 
   const fields =
     type === "registry"
@@ -245,56 +275,98 @@ export function ResourceSheet({
               )}
             </>
           ) : (
-            fields
-              .filter((f) => !f.showIf || f.showIf(config))
-              .map((f) => (
-                <div key={f.key} className="space-y-1">
-                  <Label htmlFor={f.type === "tags" ? undefined : `res-${f.key}`}>{f.label}</Label>
-                  {f.type === "tags" ? (
-                    <TagsEditor key={tagsEditorKey} tags={tags} onChange={setTags} />
-                  ) : f.type === "textarea" ? (
-                    <Textarea
-                      id={`res-${f.key}`}
-                      value={config[f.key] ?? ""}
-                      onChange={(e) => setConfigField(f.key, e.target.value)}
-                      placeholder={f.placeholder}
-                      required={f.required}
-                      rows={6}
-                      className="font-mono text-xs"
-                    />
-                  ) : f.type === "select" ? (
+            <>
+              {fields
+                .filter((f) => !f.showIf || f.showIf(config))
+                .map((f) => (
+                  <div key={f.key} className="space-y-1">
+                    <Label htmlFor={f.type === "tags" ? undefined : `res-${f.key}`}>
+                      {f.label}
+                    </Label>
+                    {f.type === "tags" ? (
+                      <TagsEditor key={tagsEditorKey} tags={tags} onChange={setTags} />
+                    ) : f.type === "textarea" ? (
+                      <Textarea
+                        id={`res-${f.key}`}
+                        value={config[f.key] ?? ""}
+                        onChange={(e) => setConfigField(f.key, e.target.value)}
+                        placeholder={f.placeholder}
+                        required={f.required}
+                        rows={6}
+                        className="font-mono text-xs"
+                      />
+                    ) : f.type === "select" ? (
+                      <Select
+                        value={config[f.key] ?? f.options?.[0]?.value ?? ""}
+                        onValueChange={(v) => setConfigField(f.key, v)}
+                      >
+                        <SelectTrigger id={`res-${f.key}`}>
+                          <SelectValue placeholder={f.placeholder} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {f.options?.map((o) => (
+                            <SelectItem key={o.value} value={o.value}>
+                              {o.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        id={`res-${f.key}`}
+                        type={f.type}
+                        value={config[f.key] ?? ""}
+                        onChange={(e) => setConfigField(f.key, e.target.value)}
+                        placeholder={f.placeholder}
+                        required={f.required}
+                      />
+                    )}
+                    {f.help && <p className="text-xs text-muted-foreground">{f.help}</p>}
+                  </div>
+                ))}
+
+              {isEcrFromAccount && (
+                <div className="space-y-1">
+                  <Label>AWS account</Label>
+                  {accounts.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No AWS accounts configured.{" "}
+                      <Link
+                        to="/admin/resources"
+                        search={{ tab: "cloud_account" }}
+                        className="text-primary underline underline-offset-4 hover:text-primary/80"
+                      >
+                        Add one first
+                      </Link>
+                      .
+                    </p>
+                  ) : (
                     <Select
-                      value={config[f.key] ?? f.options?.[0]?.value ?? ""}
-                      onValueChange={(v) => setConfigField(f.key, v)}
+                      value={config.cloud_account_id ?? ""}
+                      onValueChange={(v) => setConfigField("cloud_account_id", v)}
                     >
-                      <SelectTrigger id={`res-${f.key}`}>
-                        <SelectValue placeholder={f.placeholder} />
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select AWS account" />
                       </SelectTrigger>
                       <SelectContent>
-                        {f.options?.map((o) => (
-                          <SelectItem key={o.value} value={o.value}>
-                            {o.label}
+                        {accounts.map((a: SharedResource) => (
+                          <SelectItem key={a.id} value={a.id}>
+                            {a.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                  ) : (
-                    <Input
-                      id={`res-${f.key}`}
-                      type={f.type}
-                      value={config[f.key] ?? ""}
-                      onChange={(e) => setConfigField(f.key, e.target.value)}
-                      placeholder={f.placeholder}
-                      required={f.required}
-                    />
                   )}
-                  {f.help && <p className="text-xs text-muted-foreground">{f.help}</p>}
+                  <p className="text-xs text-muted-foreground">
+                    Credentials are resolved from the selected account — no keys to re-enter.
+                  </p>
                 </div>
-              ))
+              )}
+            </>
           )}
 
           <div className="mt-auto pt-4">
-            <Button type="submit" className="w-full" disabled={saving}>
+            <Button type="submit" className="w-full" disabled={submitDisabled}>
               {saving ? "Saving..." : isEdit ? "Update" : "Create"}
             </Button>
           </div>

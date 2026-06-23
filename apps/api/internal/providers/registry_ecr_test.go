@@ -20,6 +20,15 @@ func TestECRDockerAuthInvalidConfig(t *testing.T) {
 }
 
 func TestECRAuthTokenNoRegion(t *testing.T) {
-	_, _, _, err := ecrAuthToken(context.Background(), "", "ak", "sk")
+	_, _, _, err := ecrAuthToken(context.Background(), "", "ak", "sk", "")
 	require.ErrorContains(t, err, "region is required")
+}
+
+func TestECRConfigParsesSessionToken(t *testing.T) {
+	var c ecrConfig
+	require.NoError(t, json.Unmarshal(
+		[]byte(`{"region":"us-east-1","access_key":"a","secret_key":"s","session_token":"tok"}`),
+		&c,
+	))
+	assert.Equal(t, "tok", c.SessionToken)
 }

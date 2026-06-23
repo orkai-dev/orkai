@@ -126,7 +126,15 @@ func (r *RegistryAuth) DockerConfigJSON(ctx context.Context, registryID uuid.UUI
 		return nil, fmt.Errorf("resource %s is not a registry", registryID)
 	}
 
-	host, username, password, err := r.providers.Registry(res.Provider).DockerAuth(ctx, res.Config)
+	// For ECR registries backed by a cloud account, inject the account's current
+	// credentials (resolving short-lived role credentials when applicable) before
+	// the provider mints a token. Other configs pass through unchanged.
+	cfg, err := resolveRegistryConfig(ctx, r.store, res.OrgID, res.Provider, res.Config)
+	if err != nil {
+		return nil, err
+	}
+
+	host, username, password, err := r.providers.Registry(res.Provider).DockerAuth(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}

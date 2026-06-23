@@ -27,6 +27,10 @@ type ecrConfig struct {
 	Region    string `json:"region"`
 	AccessKey string `json:"access_key"`
 	SecretKey string `json:"secret_key"`
+	// SessionToken is set when the credentials were resolved from a cloud
+	// account using a role-based auth mode (instance role / assume role), which
+	// yields temporary STS credentials. Empty for static IAM keys.
+	SessionToken string `json:"session_token"`
 }
 
 func (p *ecrRegistry) DockerAuth(ctx context.Context, cfg json.RawMessage) (host, username, password string, err error) {
@@ -34,7 +38,7 @@ func (p *ecrRegistry) DockerAuth(ctx context.Context, cfg json.RawMessage) (host
 	if err := json.Unmarshal(cfg, &c); err != nil {
 		return "", "", "", fmt.Errorf("invalid ecr config: %w", err)
 	}
-	return ecrAuthToken(ctx, c.Region, c.AccessKey, c.SecretKey)
+	return ecrAuthToken(ctx, c.Region, c.AccessKey, c.SecretKey, c.SessionToken)
 }
 
 func (p *ecrRegistry) TestConnection(ctx context.Context, cfg json.RawMessage) (bool, string, error) {
@@ -44,23 +48,25 @@ func (p *ecrRegistry) TestConnection(ctx context.Context, cfg json.RawMessage) (
 	}
 	tctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	host, _, _, err := ecrAuthToken(tctx, c.Region, c.AccessKey, c.SecretKey)
+	host, _, _, err := ecrAuthToken(tctx, c.Region, c.AccessKey, c.SecretKey, c.SessionToken)
 	if err != nil {
 		return false, "ecr authentication failed: " + err.Error(), nil
 	}
 	return true, "authenticated to " + host, nil
 }
 
-// ecrAuthToken fetches a short-lived ECR authorization token using static IAM
-// credentials. It returns the registry host, username ("AWS") and password.
-func ecrAuthToken(ctx context.Context, region, accessKey, secretKey string) (host, username, password string, err error) {
+// ecrAuthToken fetches a short-lived ECR authorization token using the supplied
+// credentials. sessionToken is non-empty for temporary STS credentials (e.g.
+// resolved from a cloud account's instance/assume-role auth mode). It returns
+// the registry host, username ("AWS") and password.
+func ecrAuthToken(ctx context.Context, region, accessKey, secretKey, sessionToken string) (host, username, password string, err error) {
 	if region == "" {
 		return "", "", "", fmt.Errorf("ecr region is required")
 	}
 	cfg, err := awsconfig.LoadDefaultConfig(ctx,
 		awsconfig.WithRegion(region),
 		awsconfig.WithCredentialsProvider(
-			credentials.NewStaticCredentialsProvider(accessKey, secretKey, ""),
+			credentials.NewStaticCredentialsProvider(accessKey, secretKey, sessionToken),
 		),
 	)
 	if err != nil {

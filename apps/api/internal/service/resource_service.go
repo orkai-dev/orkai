@@ -135,6 +135,15 @@ func (s *ResourceService) Create(ctx context.Context, orgID uuid.UUID, input Cre
 			input.Config = expanded
 		}
 	}
+	if input.Type == model.ResourceRegistry && input.Provider == "ecr" {
+		expanded, err := s.expandECRFromCloudAccount(ctx, orgID, input.Config)
+		if err != nil {
+			return nil, err
+		}
+		if expanded != nil {
+			input.Config = expanded
+		}
+	}
 	if input.Name == "" {
 		input.Name = s.autoName(input)
 	}
@@ -346,6 +355,15 @@ func (s *ResourceService) Update(ctx context.Context, orgID, id uuid.UUID, input
 				incoming = expanded
 			}
 		}
+		// For ECR registries backed by a cloud account, keep only the reference +
+		// region so switching to/from a cloud account never persists stale keys.
+		if resource.Type == model.ResourceRegistry && resource.Provider == "ecr" {
+			if expanded, err := s.expandECRFromCloudAccount(ctx, orgID, incoming); err != nil {
+				return nil, err
+			} else if expanded != nil {
+				incoming = expanded
+			}
+		}
 		resource.Config = mergeSecretConfig(resource.Config, incoming)
 	}
 	if err := s.store.SharedResources().Update(ctx, resource); err != nil {
@@ -398,6 +416,20 @@ func (s *ResourceService) Delete(ctx context.Context, orgID, id uuid.UUID) error
 		return fmt.Errorf("resource is in use by database %q as backup storage", db.Name)
 	}
 
+	// Registries (ECR) referencing as cloud account for credential resolution.
+	if reg, err := s.store.SharedResources().FindRegistryByCloudAccount(ctx, id); err != nil {
+		return fmt.Errorf("cannot verify resource references: %w", err)
+	} else if reg != nil {
+		return fmt.Errorf("resource is in use by registry %q as cloud account", reg.Name)
+	}
+
+	// Object storage (S3) referencing as cloud account for credential resolution.
+	if os, err := s.store.SharedResources().FindObjectStorageByCloudAccount(ctx, id); err != nil {
+		return fmt.Errorf("cannot verify resource references: %w", err)
+	} else if os != nil {
+		return fmt.Errorf("resource is in use by object storage %q as cloud account", os.Name)
+	}
+
 	// Pages referencing as cloud account or git provider.
 	if pg, err := s.store.Pages().FindByResource(ctx, id); err != nil {
 		return fmt.Errorf("cannot verify resource references: %w", err)
@@ -439,7 +471,11 @@ func (s *ResourceService) TestConnection(ctx context.Context, orgID, id uuid.UUI
 		}
 		return gp.TestConnection(ctx, resource.Config)
 	case model.ResourceRegistry:
-		return s.providers.Registry(resource.Provider).TestConnection(ctx, resource.Config)
+		cfg, err := resolveRegistryConfig(ctx, s.store, resource.OrgID, resource.Provider, resource.Config)
+		if err != nil {
+			return false, err.Error(), nil
+		}
+		return s.providers.Registry(resource.Provider).TestConnection(ctx, cfg)
 	case model.ResourceSSHKey:
 		return true, "SSH key stored", nil // SSH keys are validated on use
 	case model.ResourceObjectStorage:
@@ -569,6 +605,51 @@ func (s *ResourceService) expandS3FromCloudAccount(ctx context.Context, orgID uu
 	return expanded, nil
 }
 
+// expandECRFromCloudAccount normalizes an ECR registry config that references a
+// cloud account, persisting only the reference plus the region — never the
+// account's credentials. The keys are resolved fresh at use time (see
+// resolveRegistryConfig) so rotating the cloud account's IAM keys (or using a
+// role-based auth mode) propagates automatically. It returns nil when the config
+// does not reference a cloud account (static-key entry), leaving the caller's
+// config untouched.
+func (s *ResourceService) expandECRFromCloudAccount(ctx context.Context, orgID uuid.UUID, cfg json.RawMessage) (json.RawMessage, error) {
+	if len(cfg) == 0 {
+		return nil, nil
+	}
+	var in struct {
+		CloudAccountID string `json:"cloud_account_id"`
+		Region         string `json:"region"`
+	}
+	if err := json.Unmarshal(cfg, &in); err != nil {
+		return nil, apierr.ErrValidation.WithDetail("invalid config")
+	}
+	if in.CloudAccountID == "" {
+		return nil, nil
+	}
+	if in.Region == "" {
+		return nil, apierr.ErrValidation.WithDetail("region is required")
+	}
+	accountID, err := uuid.Parse(in.CloudAccountID)
+	if err != nil {
+		return nil, apierr.ErrValidation.WithDetail("invalid cloud_account_id")
+	}
+	resource, _, err := s.cloudAccountCredentials(ctx, orgID, accountID)
+	if err != nil {
+		return nil, err
+	}
+	if resource.Provider != "aws" {
+		return nil, apierr.ErrValidation.WithDetail("selected cloud account is not an AWS account")
+	}
+	out, err := json.Marshal(map[string]string{
+		"cloud_account_id": in.CloudAccountID,
+		"region":           in.Region,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // resolveObjectStorageConfig returns a provider-ready object-storage config. For
 // aws_s3 resources that reference a cloud account, it injects that account's
 // current credentials at call time rather than relying on a stale copy, so IAM
@@ -606,9 +687,12 @@ func resolveObjectStorageConfig(ctx context.Context, st store.Store, orgID uuid.
 	if account.OrgID != orgID {
 		return nil, fmt.Errorf("cloud account not found")
 	}
-	var creds pages.Credentials
-	if err := json.Unmarshal(account.Config, &creds); err != nil {
-		return nil, fmt.Errorf("invalid cloud account config")
+	if account.Provider != "aws" {
+		return nil, fmt.Errorf("cloud account %q is not an AWS account", account.Name)
+	}
+	creds, err := pages.ParseCredentials(account.Config)
+	if err != nil {
+		return nil, fmt.Errorf("invalid cloud account config: %w", err)
 	}
 	if creds.UseStaticKeys() {
 		m["access_key"] = creds.AccessKeyID
@@ -622,6 +706,78 @@ func resolveObjectStorageConfig(ctx context.Context, st store.Store, orgID uuid.
 		if region == "" {
 			region = creds.DefaultRegion
 		}
+		ak, sk, token, rerr := creds.ResolveCredentials(ctx, region)
+		if rerr != nil {
+			return nil, fmt.Errorf("resolve credentials for cloud account %q: %w", account.Name, rerr)
+		}
+		m["access_key"] = ak
+		m["secret_key"] = sk
+		if token != "" {
+			m["session_token"] = token
+		}
+	}
+	out, err := json.Marshal(m)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// resolveRegistryConfig returns a provider-ready registry config. For ECR
+// registries that reference a cloud account, it injects that account's current
+// credentials at call time rather than relying on a stale copy, so IAM key
+// rotation (or short-lived role credentials) takes effect without re-saving the
+// registry. ECR configs that carry their own static keys (no cloud_account_id),
+// and every non-ECR provider, pass through unchanged.
+//
+// orgID is the org that owns the registry being resolved. The referenced cloud
+// account MUST belong to that same org: this is the runtime guard against a
+// cross-org cloud_account_id (the write path validates ownership, but a forged
+// or future-written reference would otherwise inject another tenant's IAM keys
+// here, since SharedResources.GetByID is not org-scoped). A mismatch is treated
+// as "not found" so this never leaks the existence of another tenant's account.
+func resolveRegistryConfig(ctx context.Context, st store.Store, orgID uuid.UUID, provider string, cfg json.RawMessage) (json.RawMessage, error) {
+	if provider != "ecr" || len(cfg) == 0 {
+		return cfg, nil
+	}
+	var m map[string]any
+	if err := json.Unmarshal(cfg, &m); err != nil {
+		return cfg, nil
+	}
+	idStr, _ := m["cloud_account_id"].(string)
+	if idStr == "" {
+		return cfg, nil
+	}
+	accountID, err := uuid.Parse(idStr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid cloud_account_id")
+	}
+	account, err := st.SharedResources().GetByID(ctx, accountID)
+	if err != nil {
+		return nil, fmt.Errorf("load cloud account: %w", err)
+	}
+	if account.OrgID != orgID {
+		return nil, fmt.Errorf("cloud account not found")
+	}
+	if account.Provider != "aws" {
+		return nil, fmt.Errorf("cloud account %q is not an AWS account", account.Name)
+	}
+	creds, err := pages.ParseCredentials(account.Config)
+	if err != nil {
+		return nil, fmt.Errorf("invalid cloud account config: %w", err)
+	}
+	region, _ := m["region"].(string)
+	if region == "" {
+		region = creds.DefaultRegion
+	}
+	if creds.UseStaticKeys() {
+		m["access_key"] = creds.AccessKeyID
+		m["secret_key"] = creds.SecretAccessKey
+	} else {
+		// Role-based account (EC2 instance role / assume role): resolve concrete,
+		// short-lived credentials now so the ECR GetAuthorizationToken call has
+		// usable keys plus a session token. Never persisted — resolution happens
+		// fresh on every use.
 		ak, sk, token, rerr := creds.ResolveCredentials(ctx, region)
 		if rerr != nil {
 			return nil, fmt.Errorf("resolve credentials for cloud account %q: %w", account.Name, rerr)
