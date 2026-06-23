@@ -1,0 +1,56 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Build outputs
+dist/
+bin/
+.next/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+coverage.out
+coverage.html
+apps/api/server
+apps/api/worker
+apps/api/migrate
+
+# Temporary
+tmp/
+*.tmp
+*.log
+.tmp/
+
+# K3s
+kubeconfig.yaml
+k3s.yaml
+
+# Bun
+
+# TanStack Router
+.tanstack/
+
+# Claude Code
+.claude/
+deploy/kubeconfig/

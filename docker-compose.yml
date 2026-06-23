@@ -1,0 +1,24 @@
+## Orkai — standalone PostgreSQL for development
+## Production deployment is managed by the install script (/opt/orkai/docker-compose.yml)
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: orkai-postgres
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:54321:5432"
+    environment:
+      POSTGRES_DB: orkai
+      POSTGRES_USER: orkai
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orkai"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:

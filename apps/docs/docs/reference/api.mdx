@@ -1,0 +1,57 @@
+---
+sidebar_position: 1
+title: API Reference
+description: orka'i REST API reference — endpoints, authentication, and request schemas for your control plane at /api/v1.
+keywords: [orkai, API, REST, reference, authentication, endpoints, OpenAPI]
+---
+
+import ApiReference from '@site/src/components/ApiReference';
+
+# API Reference
+
+The orka'i REST API is served at **`/api/v1`** on your self-hosted control plane instance. This page is a read-only capability reference — it does not call a live API.
+
+## Authentication
+
+Most endpoints require a bearer token in the `Authorization` header:
+
+```http
+Authorization: Bearer <access_token>
+```
+
+You can also use a personal API key (`ork_…`) in the same header. Public routes (registration, login, OAuth callbacks, webhooks) do not require authentication.
+
+## Base URL
+
+Replace `{your-orkai-host}` with your instance hostname (for example `orkai.example.com`):
+
+```text
+https://{your-orkai-host}/api/v1
+```
+
+Errors follow [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem details (`type`, `title`, `status`, `detail`).
+
+## Health check
+
+Liveness probe (outside `/api/v1`):
+
+```http
+GET /healthz
+```
+
+## Real-time endpoints
+
+These are not included in the OpenAPI spec below. They use WebSocket or SSE and authenticate via `?token=` query parameter:
+
+| Endpoint | Protocol | Purpose |
+|----------|----------|---------|
+| `/ws/events` | SSE | Live platform events |
+| `/ws/logs/:appId` | WebSocket | Application container logs |
+| `/ws/nodes/:id/logs` | WebSocket | Node agent logs |
+| `/ws/terminal/:appId` | WebSocket | In-browser shell |
+
+## OpenAPI reference
+
+The interactive reference below is generated from the API source code. Endpoint descriptions are in English.
+
+<ApiReference />

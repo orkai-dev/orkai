@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Orkai API Reference</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="redoc-container"></div>
+    <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
+    <script>
+      Redoc.init('/openapi.json', {
+        scrollYOffset: 60,
+        hideDownloadButton: true,
+        expandResponses: '200,201',
+        pathInMiddlePanel: true,
+        theme: {
+          colors: {
+            primary: { main: '#0e7490' },
+            http: {
+              get: '#0e7490',
+              post: '#16a34a',
+              put: '#006781',
+              patch: '#ca8a04',
+              delete: '#ba1a1a',
+            },
+          },
+          typography: {
+            fontFamily: 'Geist, Inter, system-ui, sans-serif',
+            code: { fontFamily: 'Geist Mono, ui-monospace, monospace' },
+          },
+        },
+      }, document.getElementById('redoc-container'));
+    </script>
+  </body>
+</html>

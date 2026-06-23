@@ -1,0 +1,170 @@
+/* Modern blueprint footer — Light Precision */
+
+.footer {
+  background: var(--orkai-surface-container-lowest);
+  border-top: 1px solid var(--orkai-border);
+}
+
+.inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 3.5rem 1.5rem 2.5rem;
+  display: grid;
+  grid-template-columns: 1.4fr 2fr;
+  gap: 3rem;
+}
+
+/* Brand */
+
+.brand {
+  max-width: 320px;
+}
+
+.brandTop {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  text-decoration: none;
+}
+
+.brandTop:hover {
+  text-decoration: none;
+}
+
+.brandLogo {
+  height: 1.75rem;
+  width: 1.75rem;
+}
+
+.brandName {
+  font-family: var(--orkai-font-heading);
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--orkai-foreground);
+}
+
+.brandTagline {
+  margin: 0.9rem 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--orkai-on-surface-variant);
+}
+
+.brandMeta {
+  display: inline-block;
+  margin-top: 0.9rem;
+  font-family: var(--orkai-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--orkai-outline);
+}
+
+/* Link columns */
+
+.columns {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+}
+
+.columnTitle {
+  font-family: var(--orkai-font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--orkai-foreground);
+  margin-bottom: 1rem;
+}
+
+.columnList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.link {
+  font-size: 14px;
+  color: var(--orkai-on-surface-variant);
+  text-decoration: none;
+  transition: color 0.16s ease;
+}
+
+.link:hover {
+  color: var(--orkai-primary);
+  text-decoration: none;
+}
+
+/* Bottom bar */
+
+.bar {
+  border-top: 1px solid var(--orkai-border);
+}
+
+.barInner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.copyright {
+  font-size: 13px;
+  color: var(--orkai-outline);
+}
+
+.barMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--orkai-font-mono);
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  color: var(--orkai-outline);
+}
+
+.statusDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--orkai-success);
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.14);
+}
+
+@media screen and (max-width: 996px) {
+  .inner {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+    padding: 2.5rem 1.5rem 2rem;
+  }
+
+  .brand {
+    max-width: none;
+  }
+}
+
+@media screen and (max-width: 600px) {
+  .columns {
+    grid-template-columns: 1fr 1fr;
+    gap: 1.75rem;
+  }
+
+  .barInner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}

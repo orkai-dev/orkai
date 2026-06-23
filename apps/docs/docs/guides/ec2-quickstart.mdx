@@ -1,0 +1,219 @@
+---
+sidebar_position: 2
+title: EC2 Quickstart
+description: Launch a fresh AWS EC2 instance, install orka'i with K3s, enable EBS persistent storage, and verify your first volume.
+keywords: [orkai, EC2, AWS, K3s, install, EBS, gp3, IAM, quickstart]
+---
+
+# EC2 Quickstart
+
+This guide walks through a **single-node orka'i install on a fresh EC2 instance** with **EBS-backed persistent volumes**. It covers everything from the AWS console to your first bound PVC.
+
+For EBS details after setup (per-volume classes, allowlists, API reference), see [EBS Persistent Storage](./ebs-storage).
+
+## What you end up with
+
+```text
+EC2 instance
+├── K3s (Kubernetes)          ← worker node; EBS attaches here
+├── Traefik (ports 80/443)      ← ingress for deployed apps
+├── Docker
+│   ├── orkai                   ← control plane (port 3000)
+│   └── orkai-postgres          ← orka'i database
+└── EBS CSI driver              ← provisions gp3 volumes for PVCs
+```
+
+orka'i never calls the AWS API for storage. It creates Kubernetes PVCs; the **EBS CSI driver** creates and attaches disks using the EC2 **instance IAM role**.
+
+## Step 0 — Launch EC2
+
+In the AWS console (or CLI), configure the instance **before** you SSH in.
+
+### Instance
+
+| Setting | Recommendation |
+| ------- | -------------- |
+| AMI | Ubuntu 22.04/24.04 LTS or Amazon Linux 2023 |
+| Type | `t3.medium` or larger (2 vCPU, 4 GB RAM minimum) |
+| Root volume | 30 GB+ gp3 |
+
+### Security group (inbound)
+
+| Port | Purpose |
+| ---- | ------- |
+| 22 | SSH |
+| 80 | Traefik HTTP (deployed apps) |
+| 443 | Traefik HTTPS |
+| 3000 | orka'i panel (until you put it behind a domain / reverse proxy) |
+
+Restrict sources to your IP where possible.
+
+### IAM instance profile (required for EBS)
+
+Attach an IAM role to the instance with **`AmazonEBSCSIDriverPolicy`**. This lets the EBS CSI driver call EC2 (`CreateVolume`, `AttachVolume`, etc.).
+
+1. **IAM → Roles → Create role** → trusted entity: **EC2**
+2. Attach managed policy **`AmazonEBSCSIDriverPolicy`**
+3. **EC2 → Instance → Actions → Security → Modify IAM role** → select the role
+
+You can attach the role after launch, but do it **before** creating app volumes.
+
+:::tip
+No AWS access keys go in orka'i. Only the instance profile is needed for EBS.
+:::
+
+## Step 1 — Install orka'i
+
+SSH into the instance and run the installer (installs Docker, K3s, Postgres, and orka'i):
+
+```bash
+curl -sSL https://get.orkai.dev | sudo sh
+```
+
+When it finishes, note the panel URL (typically `http://<public-ip>:3000`).
+
+Verify K3s:
+
+```bash
+sudo k3s kubectl get nodes
+```
+
+You should see one node in `Ready` state.
+
+:::info
+The installer writes config to `/opt/orkai/.env` and runs containers via Docker Compose at `/opt/orkai/docker-compose.yml`. K3s runs directly on the host (not in Docker), which is why EBS can attach to the node.
+:::
+
+## Step 2 — First login
+
+1. Open `http://<your-ec2-public-ip>:3000` in a browser
+2. Complete first-time setup (admin account)
+3. Optionally update **Settings → APP URL** if you use a domain or reverse proxy later
+
+## Step 3 — Install the EBS CSI driver
+
+Install Helm if needed (Ubuntu example):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+```
+
+Add the chart repo and install the driver against the K3s API:
+
+```bash
+helm repo add aws-ebs-csi-driver https://kubernetes-sigs.github.io/aws-ebs-csi-driver
+helm repo update
+
+sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml helm upgrade --install aws-ebs-csi-driver \
+  aws-ebs-csi-driver/aws-ebs-csi-driver \
+  --namespace kube-system \
+  --set controller.serviceAccount.create=true \
+  --set controller.serviceAccount.name=ebs-csi-controller-sa
+```
+
+Verify controller and node pods are running:
+
+```bash
+sudo k3s kubectl get pods -n kube-system -l app.kubernetes.io/name=aws-ebs-csi-driver
+```
+
+If pods crash with `UnauthorizedOperation` or `AccessDenied`, the instance profile is missing `AmazonEBSCSIDriverPolicy` — fix IAM and restart the driver pods.
+
+## Step 4 — Create a StorageClass
+
+```bash
+sudo tee /tmp/gp3-storageclass.yaml <<'EOF'
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  encrypted: "true"
+allowVolumeExpansion: true
+volumeBindingMode: WaitForFirstConsumer
+EOF
+
+sudo k3s kubectl apply -f /tmp/gp3-storageclass.yaml
+sudo k3s kubectl get storageclass
+```
+
+`WaitForFirstConsumer` waits until a pod is scheduled before provisioning, so the volume lands in the correct availability zone.
+
+## Step 5 — Configure orka'i
+
+Tell orka'i to use `gp3` for new PVCs by updating the default deploy target in Postgres:
+
+```bash
+sudo docker exec -it orkai-postgres psql -U orkai -d orkai
+```
+
+```sql
+UPDATE deploy_targets
+SET config = '{"default_storage_class": "gp3"}'::jsonb
+WHERE is_default = true;
+```
+
+Optional — restrict which classes app volumes may override:
+
+```sql
+UPDATE deploy_targets
+SET config = '{
+  "default_storage_class": "gp3",
+  "allowed_storage_classes": ["gp3"]
+}'::jsonb
+WHERE is_default = true;
+```
+
+Exit psql (`\q`), then restart orka'i so bootstrap reloads the target config:
+
+```bash
+sudo docker restart orkai
+```
+
+## Step 6 — Verify
+
+1. In orka'i: create a project and app, open **Volumes**, add a volume (e.g. `/data`, `5Gi`), save, and deploy
+2. On the server:
+
+```bash
+sudo k3s kubectl get pvc -A
+sudo k3s kubectl describe pvc <pvc-name> -n <namespace>
+```
+
+Expect:
+
+- `StorageClass: gp3`
+- `Status: Bound`
+- `VolumeHandle` containing a `vol-…` EBS volume ID
+
+You can also confirm the volume in the AWS EC2 console → **Volumes**, same region as the instance.
+
+## Troubleshooting
+
+| Symptom | Fix |
+| ------- | --- |
+| PVC stays `Pending`, IAM errors in CSI logs | Attach `AmazonEBSCSIDriverPolicy` to the instance role |
+| PVC stays `Pending`, no IAM errors | Check StorageClass exists: `sudo k3s kubectl get storageclass gp3` |
+| orka'i still uses `local-path` | Run the SQL update; restart with `sudo docker restart orkai` |
+| PVC created before config change | Delete and recreate the volume (data loss unless snapshotted) |
+| Helm cannot reach API | Use `sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml helm ...` |
+
+View CSI driver logs:
+
+```bash
+sudo k3s kubectl logs -n kube-system -l app.kubernetes.io/name=aws-ebs-csi-driver --tail=50
+```
+
+View orka'i logs:
+
+```bash
+sudo docker compose -f /opt/orkai/docker-compose.yml logs -f orkai
+```
+
+## What's next
+
+- [EBS Persistent Storage](./ebs-storage) — per-volume storage classes, allowlists, admin API, expansion
+- [Deploying Apps](./deploying-apps) — git deploys and runtime config
+- [Installation](../getting-started/installation) — requirements and install options for non-EC2 Linux hosts

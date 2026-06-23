@@ -1,0 +1,13 @@
+.frame {
+  display: block;
+  width: 100%;
+  min-height: 75vh;
+  border: 1px solid var(--orkai-border, var(--ifm-color-emphasis-300));
+  border-radius: var(--orkai-radius-lg, 0.5rem);
+  background: var(--orkai-surface-container-lowest, #fff);
+}
+
+.loading {
+  padding: 2rem 0;
+  color: var(--ifm-color-emphasis-700);
+}

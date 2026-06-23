@@ -1,0 +1,18 @@
+# Bind Traefik directly to :80/:443 inside the K3s container so Docker port
+# mappings (80:80, 443:443) reach app ingresses on Mac/local dev.
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    service:
+      type: ClusterIP
+    ports:
+      web:
+        hostPort: 80
+        exposedPort: 80
+      websecure:
+        hostPort: 443
+        exposedPort: 443

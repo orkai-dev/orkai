@@ -1,0 +1,18 @@
+{
+  "name": "orka'i",
+  "short_name": "orka'i",
+  "description": "Deploy apps, databases, and cron jobs to your own servers with real Kubernetes under the hood.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b1220",
+  "theme_color": "#0c1324",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    {
+      "src": "/orca-fin-appicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

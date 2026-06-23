@@ -1,0 +1,1189 @@
+/* --------------------------------------------------------------------------
+ * Orka'i landing — The Blueprinted Utility (Light Precision)
+ * Sharp corners, 1px rules instead of shadows, engineering grid, Geist Mono
+ * headings. Orka'i light palette (Ocean Teal). Left-aligned, asymmetric.
+ * -------------------------------------------------------------------------- */
+
+.landingPage {
+  --bg: #f8fbfc;
+  --surface: #ffffff;
+  --surface-alt: #f1f6f8;
+  --border: #d1dee2;
+  --border-strong: #b6c7cc;
+  --text: #0d1c2f;
+  --muted: #44474b;
+  --faint: #75777c;
+  --primary: #0e7490;
+  --primary-hover: #006781;
+  --accent: #81d1f0;
+  --accent-wash: #e6f4f9;
+  --success: #16a34a;
+  --code-bg: #0c1324;
+  --code-bg-head: #070d1f;
+  --code-border: #233049;
+  --grid: rgba(13, 28, 47, 0.05);
+
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 32px 32px;
+  color: var(--text);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Dark — Deep Ocean Minimalism */
+[data-theme='dark'] .landingPage {
+  --bg: #0c1324;
+  --surface: #151b2d;
+  --surface-alt: #191f31;
+  --border: #23293c;
+  --border-strong: #2e3447;
+  --text: #dce1fb;
+  --muted: #bec8cd;
+  --faint: #899297;
+  --primary: #81d1f0;
+  --primary-hover: #a3def5;
+  --accent: #81d1f0;
+  --accent-wash: rgba(129, 209, 240, 0.12);
+  --success: #3fb950;
+  --code-bg: #070d1f;
+  --code-bg-head: #03070f;
+  --code-border: #23293c;
+  --grid: rgba(129, 209, 240, 0.05);
+}
+
+/* Primary CTA keeps a saturated teal fill so white label text stays legible
+   (the light-blue accent used for text/links is too low-contrast as a button bg). */
+[data-theme='dark'] .landingPage .buttonPrimary {
+  background: #0e7490;
+  border-color: #0e7490;
+}
+
+[data-theme='dark'] .landingPage .buttonPrimary:hover {
+  background: #1499bb;
+  border-color: #1499bb;
+}
+
+/* --------------------------------------------------------------------------
+ * Scaffolding
+ * -------------------------------------------------------------------------- */
+
+.section {
+  padding: 6rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.sectionAlt {
+  background-color: var(--surface-alt);
+}
+
+.sectionInner {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.sectionHeader {
+  max-width: 680px;
+  margin-bottom: 3rem;
+}
+
+.eyebrow,
+.sectionEyebrow {
+  display: inline-block;
+  font-family: var(--orkai-font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--primary);
+  margin-bottom: 1.1rem;
+}
+
+.sectionTitle {
+  font-family: var(--orkai-font-mono);
+  font-size: 34px;
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  color: var(--text);
+  margin: 0 0 1rem;
+}
+
+.sectionLead {
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--muted);
+  margin: 0;
+}
+
+code,
+.sectionLead code,
+.heroLead code,
+.clusterList code,
+.mapFootnote code {
+  font-family: var(--orkai-font-mono);
+  font-size: 0.85em;
+  padding: 0.08rem 0.32rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  color: var(--primary);
+}
+
+.fadeIn {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 560ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.fadeIn[data-visible='true'] {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* --------------------------------------------------------------------------
+ * Buttons — sharp, Geist Mono, uppercase
+ * -------------------------------------------------------------------------- */
+
+.buttonPrimary,
+.buttonSecondary {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  height: 40px;
+  padding: 0 1.25rem;
+  border-radius: 0;
+  font-family: var(--orkai-font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+/* Sweep of light across the button on hover. */
+.buttonPrimary::after,
+.buttonSecondary::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    100deg,
+    transparent,
+    color-mix(in srgb, #ffffff 35%, transparent),
+    transparent
+  );
+  transform: skewX(-18deg);
+  transition: none;
+}
+
+.buttonPrimary:hover::after,
+.buttonSecondary:hover::after {
+  animation: buttonShine 0.7s ease;
+}
+
+.buttonSecondary::after {
+  background: linear-gradient(
+    100deg,
+    transparent,
+    color-mix(in srgb, var(--primary) 22%, transparent),
+    transparent
+  );
+}
+
+@keyframes buttonShine {
+  to {
+    left: 140%;
+  }
+}
+
+.buttonPrimary:hover,
+.buttonSecondary:hover {
+  transform: translateY(-1px);
+}
+
+.buttonPrimary {
+  background: var(--primary);
+  color: #ffffff;
+  border: 1px solid var(--primary);
+}
+
+.buttonPrimary:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.buttonSecondary {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+}
+
+.buttonSecondary:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.buttonIcon {
+  font-size: 16px !important;
+}
+
+/* --------------------------------------------------------------------------
+ * Hero — 60/40 split
+ * -------------------------------------------------------------------------- */
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border-bottom: 1px solid var(--border);
+  padding: 5.5rem 0;
+}
+
+/* Drifting radial glow behind the hero — adds depth without clutter. */
+.heroGlow {
+  position: absolute;
+  z-index: 0;
+  top: -30%;
+  right: -10%;
+  width: 60%;
+  height: 160%;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      closest-side,
+      color-mix(in srgb, var(--primary) 22%, transparent),
+      transparent 70%
+    );
+  opacity: 0.6;
+  filter: blur(10px);
+  animation: heroDrift 16s ease-in-out infinite alternate;
+}
+
+[data-theme='dark'] .heroGlow {
+  opacity: 0.4;
+  background:
+    radial-gradient(
+      closest-side,
+      color-mix(in srgb, var(--accent) 26%, transparent),
+      transparent 70%
+    );
+}
+
+@keyframes heroDrift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  100% {
+    transform: translate3d(-6%, 5%, 0) scale(1.12);
+  }
+}
+
+.heroInner {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 3.5rem;
+  align-items: center;
+}
+
+.heroCopy {
+  max-width: 600px;
+}
+
+.heroTitle {
+  font-family: var(--orkai-font-mono);
+  font-size: 50px;
+  font-weight: 500;
+  line-height: 1.04;
+  letter-spacing: -0.05em;
+  color: var(--text);
+  margin: 0 0 1.4rem;
+}
+
+.heroTitleAccent {
+  color: var(--primary);
+}
+
+.heroLead {
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--muted);
+  margin: 0 0 2rem;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.heroProof {
+  list-style: none;
+  margin: 2.25rem 0 0;
+  padding: 1.25rem 0 0;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.75rem;
+}
+
+.heroProof li {
+  position: relative;
+  padding-left: 1rem;
+  font-family: var(--orkai-font-mono);
+  font-size: 12px;
+  color: var(--faint);
+}
+
+.heroProof li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 5px;
+  height: 5px;
+  background: var(--primary);
+}
+
+.heroEvidence {
+  width: 100%;
+}
+
+/* --------------------------------------------------------------------------
+ * Terminal (shared) — dark surface on the light page
+ * -------------------------------------------------------------------------- */
+
+.terminal {
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
+  border-radius: 0;
+}
+
+.terminalHeader {
+  height: 2.5rem;
+  padding: 0 0.5rem 0 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background: var(--code-bg-head);
+  border-bottom: 1px solid var(--code-border);
+}
+
+.terminalLabel {
+  font-family: var(--orkai-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: rgba(220, 225, 251, 0.5);
+}
+
+.copyButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 1.6rem;
+  padding: 0 0.6rem;
+  background: transparent;
+  border: 1px solid var(--code-border);
+  border-radius: 0;
+  cursor: pointer;
+  font-family: var(--orkai-font-mono);
+  font-size: 11px;
+  color: rgba(220, 225, 251, 0.65);
+  transition: all 0.15s ease;
+}
+
+.copyButton:hover {
+  color: var(--accent);
+  border-color: rgba(129, 209, 240, 0.4);
+}
+
+.copyIcon {
+  font-size: 13px !important;
+}
+
+.terminalBody {
+  margin: 0;
+  padding: 1.4rem;
+  font-family: var(--orkai-font-mono);
+  font-size: 13px;
+  line-height: 1.75;
+  color: rgba(220, 225, 251, 0.78);
+  overflow-x: auto;
+  background: var(--code-bg);
+}
+
+.terminalBody code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+}
+
+.tPrompt {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.tCmd {
+  color: #ffffff;
+}
+
+.tDim {
+  color: rgba(220, 225, 251, 0.5);
+}
+
+.tAccent {
+  color: var(--accent);
+}
+
+.tOk {
+  color: #3fb950;
+  font-weight: 600;
+}
+
+/* Line-by-line boot reveal: lines reserve their space, then fade/slide in. */
+.termLine {
+  opacity: 0;
+  transform: translateY(2px);
+  transition:
+    opacity 220ms ease,
+    transform 220ms ease;
+}
+
+.termLine[data-shown='true'] {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.caret {
+  display: inline-block;
+  width: 7px;
+  height: 0.95em;
+  margin-left: 3px;
+  vertical-align: -1px;
+  background: var(--accent);
+  animation: caretBlink 1s steps(1) infinite;
+}
+
+@keyframes caretBlink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  50.01%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* --------------------------------------------------------------------------
+ * Value props — 3 columns divided by 1px rules
+ * -------------------------------------------------------------------------- */
+
+.valueProps {
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.valuePropsInner {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.valueCell {
+  padding: 2.5rem 2rem;
+  border-left: 1px solid var(--border);
+}
+
+.valueCell:first-child {
+  padding-left: 0;
+  border-left: none;
+}
+
+.valueIcon {
+  font-size: 24px !important;
+  color: var(--primary);
+  transition:
+    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    color 0.25s ease;
+}
+
+.valueCell:hover .valueIcon {
+  transform: translateY(-3px) scale(1.12);
+}
+
+.valueTitle {
+  font-family: var(--orkai-font-mono);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  margin: 1rem 0 0.5rem;
+}
+
+.valueBody {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* --------------------------------------------------------------------------
+ * Why — contrast columns
+ * -------------------------------------------------------------------------- */
+
+.contrastGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+.contrastCol {
+  height: 100%;
+  padding: 1.75rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.contrastCol:hover {
+  transform: translateY(-2px);
+}
+
+.contrastCol[data-tone='us']:hover {
+  border-color: var(--primary-hover);
+}
+
+.contrastCol[data-tone='them'] {
+  background: var(--surface-alt);
+}
+
+.contrastCol[data-tone='us'] {
+  border-color: var(--primary);
+  border-width: 1px 1px 1px 2px;
+}
+
+.contrastHead {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--orkai-font-mono);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.contrastHeadIcon {
+  font-size: 18px !important;
+}
+
+.contrastCol[data-tone='them'] .contrastHeadIcon {
+  color: var(--faint);
+}
+
+.contrastCol[data-tone='us'] .contrastHeadIcon {
+  color: var(--primary);
+}
+
+.contrastList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.contrastList li {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--muted);
+  padding-left: 1.1rem;
+  position: relative;
+}
+
+.contrastList li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.55rem;
+  width: 5px;
+  height: 5px;
+}
+
+.contrastCol[data-tone='them'] .contrastList li::before {
+  background: var(--faint);
+}
+
+.contrastCol[data-tone='us'] .contrastList li::before {
+  background: var(--primary);
+}
+
+/* --------------------------------------------------------------------------
+ * Resource map — blueprint spec table
+ * -------------------------------------------------------------------------- */
+
+.mapSplit {
+  display: grid;
+  grid-template-columns: 0.85fr 1.15fr;
+  gap: 4rem;
+  align-items: center;
+}
+
+.mapText {
+  max-width: 420px;
+}
+
+.mapFootnote {
+  margin: 1.5rem 0 0;
+  font-size: 13px;
+  color: var(--faint);
+}
+
+.mapTableWrap {
+  width: 100%;
+}
+
+.specTable {
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.specTableHead {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  padding: 0.6rem 1.1rem;
+  background: var(--surface-alt);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--orkai-font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.specRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.85rem 1.1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.specRow:last-child {
+  border-bottom: none;
+}
+
+.specKey {
+  font-family: var(--orkai-font-mono);
+  font-size: 13px;
+  color: var(--text);
+}
+
+.specValue {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--orkai-font-mono);
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.specValue[data-state='ready'] {
+  color: var(--success);
+}
+
+.specDot {
+  position: relative;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+}
+
+/* Pulsing "live" ring around the ready status dot. */
+.specDot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--success);
+  animation: dotPulse 2s ease-out infinite;
+}
+
+@keyframes dotPulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(3);
+    opacity: 0;
+  }
+}
+
+/* --------------------------------------------------------------------------
+ * Direct access — terminal + narrative
+ * -------------------------------------------------------------------------- */
+
+.clusterSplit {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 4rem;
+  align-items: center;
+}
+
+.clusterText {
+  max-width: 420px;
+}
+
+.clusterList {
+  list-style: none;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.clusterList li {
+  position: relative;
+  padding-left: 1.4rem;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.clusterList li::before {
+  content: '›';
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.clusterTerminalWrap {
+  width: 100%;
+}
+
+/* --------------------------------------------------------------------------
+ * Pages — stacked narrative + terminal
+ * -------------------------------------------------------------------------- */
+
+.pagesList {
+  list-style: none;
+  margin: 2rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 640px;
+}
+
+.pagesList li {
+  position: relative;
+  padding-left: 1.4rem;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.pagesList li::before {
+  content: '›';
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.pagesTerminalWrap {
+  margin-top: 2.5rem;
+  max-width: 720px;
+}
+
+/* --------------------------------------------------------------------------
+ * Capabilities ledger
+ * -------------------------------------------------------------------------- */
+
+.ledger {
+  border-top: 1px solid var(--border);
+}
+
+.ledgerRow {
+  display: grid;
+  grid-template-columns: 0.7fr 1.3fr;
+  gap: 3rem;
+  padding: 2.25rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.ledgerLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ledgerLabelText {
+  font-family: var(--orkai-font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--primary);
+}
+
+.ledgerTitle {
+  font-family: var(--orkai-font-mono);
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  margin: 0;
+}
+
+.ledgerItems {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.ledgerItems li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.ledgerChevron {
+  font-size: 18px !important;
+  color: var(--primary);
+  margin-top: 0.05rem;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.ledgerItems li:hover .ledgerChevron {
+  transform: translateX(4px);
+}
+
+/* --------------------------------------------------------------------------
+ * CTA
+ * -------------------------------------------------------------------------- */
+
+.cta {
+  padding: 6rem 0;
+  background: var(--surface);
+}
+
+.ctaInner {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 4rem;
+  align-items: center;
+}
+
+.ctaTitle {
+  font-family: var(--orkai-font-mono);
+  font-size: 32px;
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  color: var(--text);
+  margin: 0 0 1rem;
+}
+
+.ctaLead {
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--muted);
+  margin: 0 0 1.75rem;
+  max-width: 460px;
+}
+
+.ctaInstall {
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  padding: 1.5rem;
+}
+
+.ctaInstallHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+  font-family: var(--orkai-font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.ctaInstall .copyButton {
+  color: var(--faint);
+  border-color: var(--border-strong);
+}
+
+.ctaInstall .copyButton:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.ctaInstallCmd {
+  display: block;
+  padding: 0.85rem 1rem;
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
+  border-radius: 0;
+  font-family: var(--orkai-font-mono);
+  font-size: 13px;
+  color: rgba(220, 225, 251, 0.85);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.implLink {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-top: 1.75rem;
+  font-family: var(--orkai-font-mono);
+  font-size: 13px;
+  color: var(--muted);
+  text-decoration: none;
+  max-width: 640px;
+}
+
+.implLinkLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.implLink:hover {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.implPath {
+  font-family: var(--orkai-font-mono);
+  font-size: 12px;
+  padding: 0.1rem 0.4rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.implLink:hover .implPath {
+  border-color: var(--primary);
+}
+
+.ctaGithub {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 1.1rem;
+  font-family: var(--orkai-font-mono);
+  font-size: 12px;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.ctaGithub:hover {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+/* --------------------------------------------------------------------------
+ * Responsive
+ * -------------------------------------------------------------------------- */
+
+@media screen and (max-width: 996px) {
+  .section {
+    padding: 4rem 0;
+  }
+
+  .sectionInner,
+  .heroInner,
+  .valuePropsInner {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+
+  .hero {
+    padding: 4rem 0;
+  }
+
+  .heroInner {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+
+  .heroTitle {
+    font-size: 38px;
+  }
+
+  .heroEvidence {
+    max-width: 560px;
+  }
+
+  .sectionTitle {
+    font-size: 28px;
+  }
+
+  .valuePropsInner {
+    grid-template-columns: 1fr;
+  }
+
+  .valueCell {
+    padding: 1.75rem 0;
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+
+  .valueCell:first-child {
+    border-top: none;
+    padding-top: 1.75rem;
+  }
+
+  .contrastGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .mapSplit,
+  .clusterSplit {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+
+  /* keep the narrative above the terminal on mobile */
+  .clusterTerminalWrap {
+    order: 2;
+  }
+
+  .clusterText {
+    order: 1;
+    max-width: none;
+  }
+
+  .ledgerRow {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+    padding: 1.75rem 0;
+  }
+
+  .ctaInner {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+}
+
+/* --------------------------------------------------------------------------
+ * Reduced motion — honor the user's OS preference
+ * -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .heroGlow,
+  .specDot::after,
+  .caret {
+    animation: none !important;
+  }
+
+  .heroGlow {
+    opacity: 0.45;
+  }
+
+  .caret {
+    opacity: 0.7;
+  }
+
+  .fadeIn,
+  .termLine,
+  .valueIcon,
+  .ledgerChevron,
+  .contrastCol,
+  .buttonPrimary,
+  .buttonSecondary {
+    transition: none !important;
+  }
+
+  .fadeIn,
+  .termLine {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .buttonPrimary:hover::after,
+  .buttonSecondary:hover::after {
+    animation: none !important;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .heroTitle {
+    font-size: 32px;
+  }
+
+  .heroActions {
+    width: 100%;
+  }
+
+  .buttonPrimary,
+  .buttonSecondary {
+    flex: 1;
+  }
+
+  .terminalBody {
+    font-size: 12px;
+    padding: 1.1rem;
+  }
+}

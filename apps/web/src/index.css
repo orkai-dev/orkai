@@ -1,0 +1,332 @@
+@import "tailwindcss";
+
+/* Tailwind v4: use .dark class instead of @media for dark: variant */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Orka'i Design Tokens
+ * Light = utility console (@theme)  |  Dark = developer console (.dark)
+ */
+
+@theme {
+  /* Typography */
+  --font-sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica,
+    Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-heading: "Geist", var(--font-sans);
+  --font-body: "Geist", var(--font-sans);
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+
+  /* Tight radii: enough affordance, no rounded SaaS gloss */
+  --radius-sm: 0.0625rem;
+  --radius: 0.1875rem;
+  --radius-md: 0.25rem;
+  --radius-lg: 0.375rem;
+  --radius-xl: 0.5rem;
+  --radius-full: 9999px;
+
+  /* Light theme — utility console */
+  --color-surface: #f6f8fa;
+  --color-surface-dim: #d8dee4;
+  --color-surface-bright: #ffffff;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f6f8fa;
+  --color-surface-container: #eef2f6;
+  --color-surface-container-high: #e6ebf0;
+  --color-surface-container-highest: #d8dee4;
+  --color-surface-variant: #d8dee4;
+  --color-surface-main: #f6f8fa;
+  --color-ocean-teal: #0e7490;
+  --color-outline-muted: #d0d7de;
+
+  --color-background: #f6f8fa;
+  --color-foreground: #1f2328;
+  --color-card: #ffffff;
+  --color-card-foreground: #1f2328;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #1f2328;
+  --color-primary: #0e7490;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #eef2f6;
+  --color-secondary-foreground: #24292f;
+  --color-muted: #f0f3f6;
+  --color-muted-foreground: #57606a;
+  --color-accent: #eaeef2;
+  --color-accent-foreground: #1f2328;
+  --color-destructive: #cf222e;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #d0d7de;
+  --color-input: #d0d7de;
+  --color-ring: #0e7490;
+
+  /* Semantic status colors */
+  --color-success: #16a34a;
+  --color-success-foreground: #ffffff;
+  --color-warning: #9a6700;
+  --color-warning-foreground: #ffffff;
+  --color-log: #0b1220;
+
+  /* Layout tokens */
+  --layout-sidebar-width: 240px;
+  --layout-container-max: 1280px;
+  --layout-gutter: 16px;
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    @apply bg-background text-foreground antialiased text-body-md;
+    background-image: none;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--color-primary) 24%, transparent);
+  }
+}
+
+/* Dark theme — developer console */
+.dark {
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica,
+    Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-body: "Inter", var(--font-sans);
+
+  --color-surface: #0b1220;
+  --color-surface-dim: #080f1d;
+  --color-surface-bright: #1f2937;
+  --color-surface-container-lowest: #060b13;
+  --color-surface-container-low: #0f172a;
+  --color-surface-container: #111c31;
+  --color-surface-container-high: #162238;
+  --color-surface-container-highest: #1f2a44;
+  --color-surface-variant: #1f2a44;
+  --color-surface-main: #0b1220;
+  --color-ocean-teal: #0e7490;
+  --color-outline-muted: #233047;
+
+  --color-background: #0b1220;
+  --color-foreground: #d7deea;
+  --color-card: #0f172a;
+  --color-card-foreground: #d7deea;
+  --color-popover: #111c31;
+  --color-popover-foreground: #d7deea;
+  --color-primary: #0e7490;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #162238;
+  --color-secondary-foreground: #b7c3d6;
+  --color-muted: #111c31;
+  --color-muted-foreground: #8b98aa;
+  --color-accent: #162238;
+  --color-accent-foreground: #e5edf8;
+  --color-destructive: #f85149;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #233047;
+  --color-input: #26344f;
+  --color-ring: #38bdf8;
+
+  --color-success: #3fb950;
+  --color-success-foreground: #ffffff;
+  --color-warning: #d29922;
+  --color-warning-foreground: #0b1220;
+  --color-log: #060b13;
+
+  --layout-container-max: 1440px;
+}
+
+.dark body {
+  background-image: none;
+}
+
+/* ── Typography utilities ─────────────────────────────────────── */
+@utility text-headline-xl {
+  font-family: var(--font-heading);
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 40px;
+  letter-spacing: -0.02em;
+}
+
+@utility text-headline-lg {
+  font-family: var(--font-heading);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+@utility text-display-lg {
+  font-family: var(--font-heading);
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+@utility text-headline-md {
+  font-family: var(--font-heading);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+@utility text-headline-sm {
+  font-family: var(--font-heading);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+@utility text-headline-lg-mobile {
+  font-family: var(--font-heading);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+@utility text-body-lg {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+@utility text-body-md {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+@utility text-body-sm {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+}
+
+@utility text-code-sm {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+@utility text-label-technical {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  letter-spacing: 0.05em;
+}
+
+@utility text-label-md {
+  font-family: var(--font-heading);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+}
+
+@utility text-label-caps {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.dark .text-headline-xl {
+  font-size: 34px;
+  line-height: 42px;
+}
+
+.dark .text-headline-lg {
+  font-size: 24px;
+  line-height: 32px;
+}
+
+.dark .text-headline-md {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.dark .text-body-lg {
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.dark .text-body-md {
+  font-size: 13px;
+  line-height: 20px;
+}
+
+/* ── Status indicators ────────────────────────────────────────── */
+@utility status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+
+@keyframes status-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@utility status-dot-pulse {
+  animation: status-pulse 1.5s ease-in-out infinite;
+}
+
+/* ── Animations ──────────────────────────────────────────────── */
+@keyframes page-enter {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.animate-page-enter { animation: page-enter 0.1s ease-out both; }
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.animate-fade-in { animation: fade-in 0.12s ease-out both; }
+
+/* ── Auth pages — schematic grid background ──────────────────── */
+.auth-grid-bg {
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--color-border) 55%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--color-border) 55%, transparent) 1px, transparent 1px);
+  background-size: 32px 32px;
+  opacity: 0.08;
+}
+
+/* ── Sonner toasts — match design tokens ─────────────────────── */
+[data-sonner-toaster] {
+  --normal-bg: var(--color-popover);
+  --normal-border: var(--color-border);
+  --normal-text: var(--color-popover-foreground);
+  --border-radius: var(--radius);
+}
+
+/* ── Recharts fix ────────────────────────────────────────────── */
+.recharts-wrapper {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+.recharts-wrapper text {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  pointer-events: none;
+}
+.recharts-wrapper .recharts-surface {
+  outline: none !important;
+}
+
+/* ── React Flow ──────────────────────────────────────────────── */
+.react-flow__node {
+  cursor: grab !important;
+}
+.react-flow__node:active {
+  cursor: grabbing !important;
+}

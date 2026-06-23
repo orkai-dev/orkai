@@ -1,0 +1,1047 @@
+package service
+
+import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
+	"log/slog"
+	"slices"
+	"strings"
+
+	"github.com/google/uuid"
+	"k8s.io/apimachinery/pkg/api/resource"
+
+	"github.com/orkai-dev/orkai/apps/api/internal/model"
+	"github.com/orkai-dev/orkai/apps/api/internal/orchestrator"
+	"github.com/orkai-dev/orkai/apps/api/internal/store"
+)
+
+type AppService struct {
+	store        store.Store
+	targets      *orchestrator.TargetRegistry
+	logger       *slog.Logger
+	domainSvc    *DomainService
+	registryAuth *RegistryAuth
+	notifSvc     *NotificationService
+}
+
+func NewAppService(s store.Store, targets *orchestrator.TargetRegistry, logger *slog.Logger, domainSvc *DomainService, registryAuth *RegistryAuth, notifSvc *NotificationService) *AppService {
+	return &AppService{store: s, targets: targets, logger: logger, domainSvc: domainSvc, registryAuth: registryAuth, notifSvc: notifSvc}
+}
+
+type CreateAppInput struct {
+	ProjectID     uuid.UUID           `json:"project_id" binding:"required"`
+	Name          string              `json:"name" binding:"required,min=1,max=63"`
+	IsCritical    bool                `json:"is_critical"`
+	SourceType    model.SourceType    `json:"source_type" binding:"required,oneof=git image"`
+	GitRepo       string              `json:"git_repo" binding:"required_if=SourceType git"`
+	GitBranch     string              `json:"git_branch"`
+	GitProviderID *uuid.UUID          `json:"git_provider_id"`
+	RegistryID    *uuid.UUID          `json:"registry_id"`
+	DockerImage   string              `json:"docker_image" binding:"required_if=SourceType image"`
+	BuildType     model.BuildType     `json:"build_type"`
+	Dockerfile    string              `json:"dockerfile"`
+	Replicas      int32               `json:"replicas"`
+	CPULimit      string              `json:"cpu_limit"`
+	MemLimit      string              `json:"mem_limit"`
+	EnvVars       map[string]string   `json:"env_vars"`
+	Ports         []model.PortMapping `json:"ports"`
+}
+
+func (s *AppService) Create(ctx context.Context, input CreateAppInput) (*model.Application, error) {
+	app := &model.Application{
+		ProjectID:     input.ProjectID,
+		Name:          input.Name,
+		IsCritical:    input.IsCritical,
+		SourceType:    input.SourceType,
+		GitRepo:       input.GitRepo,
+		GitBranch:     input.GitBranch,
+		GitProviderID: input.GitProviderID,
+		RegistryID:    input.RegistryID,
+		DockerImage:   input.DockerImage,
+		BuildType:     input.BuildType,
+		Dockerfile:    input.Dockerfile,
+		Replicas:      input.Replicas,
+		CPULimit:      input.CPULimit,
+		MemLimit:      input.MemLimit,
+		EnvVars:       input.EnvVars,
+		Ports:         input.Ports,
+		Status:        model.AppStatusIdle,
+	}
+
+	// Apply defaults
+	if app.GitBranch == "" {
+		app.GitBranch = "main"
+	}
+	if app.Replicas == 0 {
+		app.Replicas = 1
+	}
+	if app.CPULimit == "" {
+		app.CPULimit = "500m"
+	}
+	if app.MemLimit == "" {
+		app.MemLimit = "512Mi"
+	}
+	if app.BuildType == "" && app.SourceType == model.SourceGit {
+		app.BuildType = model.BuildDockerfile
+	}
+	if app.Dockerfile == "" {
+		app.Dockerfile = "Dockerfile"
+	}
+
+	// Default container port based on common images
+	if len(app.Ports) == 0 {
+		port := guessContainerPort(app.DockerImage)
+		app.Ports = []model.PortMapping{{ContainerPort: port, ServicePort: port, Protocol: "tcp"}}
+	}
+
+	// Look up project namespace — app requires a valid namespace
+	project, err := s.store.Projects().GetByID(ctx, input.ProjectID)
+	if err != nil {
+		return nil, fmt.Errorf("project not found: %w", err)
+	}
+	if project.Namespace == "" {
+		return nil, fmt.Errorf("project has no namespace configured")
+	}
+	app.Namespace = project.Namespace
+	app.K8sName = sanitizeK8sName(app.Name)
+
+	// Check for K8s name conflicts in the same project (apps + databases share
+	// namespace). Both lookups are single indexed (project_id, k8s_name) seeks.
+	if dup, err := s.store.Applications().ExistsByK8sName(ctx, input.ProjectID, app.K8sName); err != nil {
+		return nil, fmt.Errorf("cannot verify name uniqueness: %w", err)
+	} else if dup {
+		return nil, fmt.Errorf("an application with K8s name %q already exists", app.K8sName)
+	}
+	if dup, err := s.store.ManagedDatabases().ExistsByK8sName(ctx, input.ProjectID, app.K8sName); err != nil {
+		return nil, fmt.Errorf("cannot verify name uniqueness: %w", err)
+	} else if dup {
+		return nil, fmt.Errorf("a database with K8s name %q already exists — app and database names must not collide", app.K8sName)
+	}
+
+	// Validate git provider belongs to same org
+	if app.GitProviderID != nil {
+		res, err := s.store.SharedResources().GetByID(ctx, *app.GitProviderID)
+		if err != nil {
+			return nil, fmt.Errorf("git provider not found: %w", err)
+		}
+		if res.OrgID != project.OrgID {
+			return nil, fmt.Errorf("git provider does not belong to this organization")
+		}
+	}
+
+	// Validate registry belongs to same org and is a registry resource
+	if app.RegistryID != nil {
+		res, err := s.store.SharedResources().GetByID(ctx, *app.RegistryID)
+		if err != nil {
+			return nil, fmt.Errorf("registry not found: %w", err)
+		}
+		if res.OrgID != project.OrgID {
+			return nil, fmt.Errorf("registry does not belong to this organization")
+		}
+		if res.Type != model.ResourceRegistry {
+			return nil, fmt.Errorf("resource is not a registry")
+		}
+	}
+
+	if err := s.store.Applications().Create(ctx, app); err != nil {
+		return nil, err
+	}
+
+	// Auto-generate default Traefik domain
+	if s.domainSvc != nil {
+		if domain, err := s.domainSvc.GenerateTraefikDomain(ctx, app.ID); err != nil {
+			s.logger.Error("failed to auto-generate domain", slog.Any("error", err))
+		} else {
+			s.logger.Info("default domain generated", slog.String("host", domain.Host))
+		}
+	}
+
+	s.logger.Info("application created",
+		slog.String("name", app.Name),
+		slog.String("id", app.ID.String()),
+		slog.String("source", string(app.SourceType)),
+	)
+	return app, nil
+}
+
+// guessContainerPort returns a default port for common Docker images.
+func guessContainerPort(image string) int {
+	img := strings.ToLower(image)
+	switch {
+	case strings.Contains(img, "nginx"), strings.Contains(img, "httpd"), strings.Contains(img, "apache"):
+		return 80
+	case strings.Contains(img, "node"), strings.Contains(img, "next"), strings.Contains(img, "nuxt"):
+		return 3000
+	case strings.Contains(img, "rails"), strings.Contains(img, "puma"):
+		return 3000
+	case strings.Contains(img, "django"), strings.Contains(img, "flask"), strings.Contains(img, "uvicorn"):
+		return 8000
+	case strings.Contains(img, "spring"), strings.Contains(img, "tomcat"):
+		return 8080
+	case strings.Contains(img, "go"), strings.Contains(img, "gin"), strings.Contains(img, "fiber"):
+		return 8080
+	case strings.Contains(img, "postgres"):
+		return 5432
+	case strings.Contains(img, "mysql"), strings.Contains(img, "mariadb"):
+		return 3306
+	case strings.Contains(img, "redis"), strings.Contains(img, "valkey"):
+		return 6379
+	case strings.Contains(img, "mongo"):
+		return 27017
+	default:
+		return 80
+	}
+}
+
+type UpdateAppInput struct {
+	// Metadata
+	IsCritical *bool `json:"is_critical"`
+
+	// Source configuration
+	GitRepo     *string    `json:"git_repo"`
+	GitBranch   *string    `json:"git_branch"`
+	DockerImage *string    `json:"docker_image"`
+	RegistryID  *uuid.UUID `json:"registry_id"`
+
+	// Build configuration
+	BuildType    *string           `json:"build_type"`
+	Dockerfile   *string           `json:"dockerfile"`
+	BuildContext *string           `json:"build_context"`
+	BuildArgs    map[string]string `json:"build_args"`
+	BuildEnvVars map[string]string `json:"build_env_vars"`
+	WatchPaths   []string          `json:"watch_paths"`
+	NoCache      *bool             `json:"no_cache"`
+
+	// Runtime configuration
+	CPULimit   *string             `json:"cpu_limit"`
+	MemLimit   *string             `json:"mem_limit"`
+	CPURequest *string             `json:"cpu_request"`
+	MemRequest *string             `json:"mem_request"`
+	Ports      []model.PortMapping `json:"ports"`
+	NodePool   *string             `json:"node_pool"`
+
+	// Advanced configuration
+	HealthCheck            *model.HealthCheck          `json:"health_check"`
+	Autoscaling            *model.AutoscalingConfig    `json:"autoscaling"`
+	Volumes                []model.VolumeMount         `json:"volumes"`
+	DeployStrategy         *string                     `json:"deploy_strategy"`
+	DeployStrategyConfig   *model.DeployStrategyConfig `json:"deploy_strategy_config"`
+	TerminationGracePeriod *int                        `json:"termination_grace_period"`
+}
+
+func (s *AppService) Update(ctx context.Context, id uuid.UUID, input UpdateAppInput) (*model.Application, error) {
+	app, err := s.store.Applications().GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Track whether runtime-affecting fields changed (need K8s deployment update)
+	runtimeChanged := false
+
+	// Apply metadata fields
+	if input.IsCritical != nil {
+		app.IsCritical = *input.IsCritical
+	}
+
+	// Apply source fields (prevent clearing required values)
+	if input.GitRepo != nil {
+		if app.SourceType == model.SourceGit && strings.TrimSpace(*input.GitRepo) == "" {
+			return nil, fmt.Errorf("git repo cannot be empty for git-based apps")
+		}
+		app.GitRepo = *input.GitRepo
+	}
+	if input.GitBranch != nil {
+		if strings.TrimSpace(*input.GitBranch) == "" {
+			return nil, fmt.Errorf("git branch cannot be empty")
+		}
+		app.GitBranch = *input.GitBranch
+	}
+	if input.DockerImage != nil {
+		if app.SourceType == model.SourceImage && strings.TrimSpace(*input.DockerImage) == "" {
+			return nil, fmt.Errorf("docker image cannot be empty for image-based apps")
+		}
+		app.DockerImage = *input.DockerImage
+	}
+	if input.RegistryID != nil {
+		if *input.RegistryID == uuid.Nil {
+			// Sentinel: clear the linked registry.
+			app.RegistryID = nil
+		} else {
+			res, err := s.store.SharedResources().GetByID(ctx, *input.RegistryID)
+			if err != nil {
+				return nil, fmt.Errorf("registry not found: %w", err)
+			}
+			if project, perr := s.store.Projects().GetByID(ctx, app.ProjectID); perr == nil && res.OrgID != project.OrgID {
+				return nil, fmt.Errorf("registry does not belong to this organization")
+			}
+			if res.Type != model.ResourceRegistry {
+				return nil, fmt.Errorf("resource is not a registry")
+			}
+			app.RegistryID = input.RegistryID
+		}
+		runtimeChanged = true
+	}
+
+	// Apply build fields
+	if input.BuildType != nil {
+		app.BuildType = model.BuildType(*input.BuildType)
+	}
+	if input.Dockerfile != nil {
+		app.Dockerfile = *input.Dockerfile
+	}
+	if input.BuildContext != nil {
+		app.BuildContext = *input.BuildContext
+	}
+	if input.BuildArgs != nil {
+		app.BuildArgs = input.BuildArgs
+	}
+	if input.BuildEnvVars != nil {
+		app.BuildEnvVars = input.BuildEnvVars
+	}
+	if input.WatchPaths != nil {
+		app.WatchPaths = input.WatchPaths
+	}
+	if input.NoCache != nil {
+		app.NoCache = *input.NoCache
+	}
+
+	// Apply runtime fields (these affect the live K8s deployment)
+	if input.CPULimit != nil {
+		app.CPULimit = *input.CPULimit
+		runtimeChanged = true
+	}
+	if input.MemLimit != nil {
+		app.MemLimit = *input.MemLimit
+		runtimeChanged = true
+	}
+	if input.CPURequest != nil {
+		app.CPURequest = *input.CPURequest
+		runtimeChanged = true
+	}
+	if input.MemRequest != nil {
+		app.MemRequest = *input.MemRequest
+		runtimeChanged = true
+	}
+	if input.Ports != nil {
+		app.Ports = input.Ports
+		runtimeChanged = true
+	}
+	if input.NodePool != nil {
+		app.NodePool = *input.NodePool
+		runtimeChanged = true
+	}
+	if input.HealthCheck != nil {
+		app.HealthCheck = input.HealthCheck
+		runtimeChanged = true
+	}
+	if input.Autoscaling != nil {
+		app.Autoscaling = input.Autoscaling
+	}
+	if input.Volumes != nil {
+		app.Volumes = input.Volumes
+		runtimeChanged = true
+	}
+	if input.DeployStrategy != nil {
+		app.DeployStrategy = *input.DeployStrategy
+		runtimeChanged = true
+	}
+	if input.DeployStrategyConfig != nil {
+		app.DeployStrategyConfig = input.DeployStrategyConfig
+		runtimeChanged = true
+	}
+	if input.TerminationGracePeriod != nil {
+		app.TerminationGracePeriod = *input.TerminationGracePeriod
+		runtimeChanged = true
+	}
+
+	// Server-side validation
+	if app.HealthCheck != nil && app.HealthCheck.Type != "" {
+		switch app.HealthCheck.Type {
+		case "http":
+			if app.HealthCheck.Path == "" {
+				return nil, fmt.Errorf("health check path is required for HTTP probe")
+			}
+			if app.HealthCheck.Port <= 0 || app.HealthCheck.Port > 65535 {
+				return nil, fmt.Errorf("health check port must be between 1 and 65535")
+			}
+		case "tcp":
+			if app.HealthCheck.Port <= 0 || app.HealthCheck.Port > 65535 {
+				return nil, fmt.Errorf("health check port must be between 1 and 65535")
+			}
+		case "exec":
+			if app.HealthCheck.Command == "" {
+				return nil, fmt.Errorf("health check command is required for exec probe")
+			}
+		default:
+			return nil, fmt.Errorf("invalid health check type: %s", app.HealthCheck.Type)
+		}
+	}
+	if app.TerminationGracePeriod < 0 {
+		return nil, fmt.Errorf("termination grace period cannot be negative")
+	}
+	for _, p := range app.Ports {
+		if p.ContainerPort <= 0 || p.ContainerPort > 65535 {
+			return nil, fmt.Errorf("container port must be between 1 and 65535")
+		}
+		if p.Protocol != "" && p.Protocol != "tcp" && p.Protocol != "udp" {
+			return nil, fmt.Errorf("port protocol must be tcp or udp")
+		}
+	}
+	// Validate resource format (must be valid K8s quantities)
+	for _, res := range []struct{ name, val string }{
+		{"cpu_limit", app.CPULimit}, {"mem_limit", app.MemLimit},
+		{"cpu_request", app.CPURequest}, {"mem_request", app.MemRequest},
+	} {
+		if res.val != "" {
+			if _, err := resource.ParseQuantity(res.val); err != nil {
+				return nil, fmt.Errorf("invalid %s %q: %w", res.name, res.val, err)
+			}
+		}
+	}
+	// Validate volumes
+	volNames := make(map[string]bool)
+	volMounts := make(map[string]bool)
+	needsStorageClassCheck := false
+	for _, vol := range app.Volumes {
+		if vol.StorageClass != "" {
+			needsStorageClassCheck = true
+			break
+		}
+	}
+	var allowedStorageClasses []string
+	if needsStorageClassCheck {
+		rec, err := deployTargetRecord(ctx, s.store, app)
+		if err != nil {
+			return nil, fmt.Errorf("deploy target: %w", err)
+		}
+		allowedStorageClasses = rec.Config.AllowedStorageClasses
+	}
+	for _, vol := range app.Volumes {
+		if vol.Name == "" {
+			return nil, fmt.Errorf("volume name cannot be empty")
+		}
+		if volNames[vol.Name] {
+			return nil, fmt.Errorf("duplicate volume name: %s", vol.Name)
+		}
+		volNames[vol.Name] = true
+		if vol.MountPath == "" {
+			return nil, fmt.Errorf("volume mount path cannot be empty")
+		}
+		if !strings.HasPrefix(vol.MountPath, "/") {
+			return nil, fmt.Errorf("volume mount path must be absolute (start with /): %s", vol.MountPath)
+		}
+		if volMounts[vol.MountPath] {
+			return nil, fmt.Errorf("duplicate volume mount path: %s", vol.MountPath)
+		}
+		volMounts[vol.MountPath] = true
+		if vol.Size != "" {
+			if _, err := resource.ParseQuantity(vol.Size); err != nil {
+				return nil, fmt.Errorf("invalid volume size %q for %s: %w", vol.Size, vol.Name, err)
+			}
+		}
+		if vol.StorageClass != "" && len(allowedStorageClasses) > 0 && !slices.Contains(allowedStorageClasses, vol.StorageClass) {
+			return nil, fmt.Errorf("storage class %q not allowed for this target", vol.StorageClass)
+		}
+	}
+	// Validate request <= limit
+	if app.CPURequest != "" && app.CPULimit != "" {
+		req, _ := resource.ParseQuantity(app.CPURequest)
+		lim, _ := resource.ParseQuantity(app.CPULimit)
+		if req.Cmp(lim) > 0 {
+			return nil, fmt.Errorf("cpu_request (%s) cannot exceed cpu_limit (%s)", app.CPURequest, app.CPULimit)
+		}
+	}
+	if app.MemRequest != "" && app.MemLimit != "" {
+		req, _ := resource.ParseQuantity(app.MemRequest)
+		lim, _ := resource.ParseQuantity(app.MemLimit)
+		if req.Cmp(lim) > 0 {
+			return nil, fmt.Errorf("mem_request (%s) cannot exceed mem_limit (%s)", app.MemRequest, app.MemLimit)
+		}
+	}
+	// Validate autoscaling
+	if app.Autoscaling != nil && app.Autoscaling.Enabled {
+		if app.Autoscaling.MinReplicas <= 0 {
+			return nil, fmt.Errorf("HPA min replicas must be at least 1")
+		}
+		if app.Autoscaling.MaxReplicas < app.Autoscaling.MinReplicas {
+			return nil, fmt.Errorf("HPA max replicas must be >= min replicas")
+		}
+		if app.Autoscaling.CPUTarget <= 0 && app.Autoscaling.MemTarget <= 0 {
+			return nil, fmt.Errorf("HPA requires at least one metric target (CPU or memory)")
+		}
+	}
+	// Validate deploy strategy
+	if app.DeployStrategy != "" && app.DeployStrategy != "rolling" && app.DeployStrategy != "recreate" {
+		return nil, fmt.Errorf("deploy strategy must be 'rolling' or 'recreate'")
+	}
+
+	// Save to DB first, then apply to K8s — rollback DB on K8s failure
+	oldApp, _ := s.store.Applications().GetByID(ctx, app.ID)
+	if err := s.store.Applications().Update(ctx, app); err != nil {
+		return nil, err
+	}
+
+	rollback := func(reason string, cause error) (*model.Application, error) {
+		if oldApp != nil {
+			_ = s.store.Applications().Update(ctx, oldApp)
+		}
+		return nil, fmt.Errorf("%s (settings rolled back, redeploy to reconcile): %w", reason, cause)
+	}
+
+	// Reconcile K8s resources if autoscaling changed
+	if input.Autoscaling != nil || (runtimeChanged && app.Status == model.AppStatusRunning) {
+		target, terr := targetForApp(s.targets, app)
+		if terr != nil {
+			return rollback("failed to resolve deploy target", terr)
+		}
+		if input.Autoscaling != nil {
+			if input.Autoscaling.Enabled {
+				if err := target.ConfigureHPA(ctx, app, *input.Autoscaling); err != nil {
+					return rollback("failed to apply HPA", err)
+				}
+			} else {
+				if err := target.DeleteHPA(ctx, app); err != nil {
+					return rollback("failed to remove HPA", err)
+				}
+			}
+		}
+
+		// Redeploy if runtime-affecting fields changed and app is currently deployed
+		if runtimeChanged && app.Status == model.AppStatusRunning {
+			mergedEnv := make(map[string]string)
+			project, projErr := s.store.Projects().GetByID(ctx, app.ProjectID)
+			if projErr == nil && project.EnvVars != nil {
+				for k, v := range project.EnvVars {
+					mergedEnv[k] = v
+				}
+			}
+			for k, v := range app.EnvVars {
+				mergedEnv[k] = v
+			}
+			pullSecret, err := s.registryAuth.DockerConfigJSONForApp(ctx, app)
+			if err != nil {
+				return rollback("failed to resolve registry credentials", err)
+			}
+			if err := target.Deploy(ctx, app, orchestrator.DeployOpts{
+				Image:                  app.DockerImage,
+				Replicas:               app.Replicas,
+				EnvVars:                mergedEnv,
+				Ports:                  app.Ports,
+				CPULimit:               app.CPULimit,
+				MemLimit:               app.MemLimit,
+				CPURequest:             app.CPURequest,
+				MemRequest:             app.MemRequest,
+				HealthCheck:            app.HealthCheck,
+				Volumes:                app.Volumes,
+				DeployStrategy:         app.DeployStrategy,
+				DeployStrategyConfig:   app.DeployStrategyConfig,
+				TerminationGracePeriod: app.TerminationGracePeriod,
+				NodePool:               app.NodePool,
+				ImagePullSecret:        pullSecret,
+			}); err != nil {
+				return rollback("failed to apply deployment changes", err)
+			}
+			// Persist metadata written back by orchestrator (e.g. PVC names)
+			_ = s.store.Applications().Update(ctx, app)
+		}
+	}
+
+	s.logger.Info("application updated", slog.String("name", app.Name), slog.String("id", app.ID.String()))
+	return app, nil
+}
+
+func (s *AppService) GetPodEvents(ctx context.Context, id uuid.UUID, podName string) ([]orchestrator.PodEvent, error) {
+	app, err := s.store.Applications().GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	target, err := targetForApp(s.targets, app)
+	if err != nil {
+		return nil, err
+	}
+	return target.GetPodEvents(ctx, app, podName)
+}
+
+func (s *AppService) GetByID(ctx context.Context, id uuid.UUID) (*model.Application, error) {
+	return s.store.Applications().GetByID(ctx, id)
+}
+
+func (s *AppService) List(ctx context.Context, projectID uuid.UUID, params store.ListParams) ([]model.Application, int, error) {
+	apps, total, err := s.store.Applications().ListByProject(ctx, projectID, params)
+	if err == nil {
+		s.syncLiveStatuses(ctx, apps)
+	}
+	return apps, total, err
+}
+
+func (s *AppService) ListAll(ctx context.Context, params store.ListParams, filter store.AppListFilter) ([]model.Application, int, error) {
+	apps, total, err := s.store.Applications().ListAll(ctx, params, filter)
+	if err == nil {
+		s.syncLiveStatuses(ctx, apps)
+	}
+	return apps, total, err
+}
+
+// syncLiveStatuses queries K8s for each app's real status and overwrites
+// the in-memory status before returning to the caller. Also persists to DB
+// if changed (triggers SSE for other clients).
+func (s *AppService) syncLiveStatuses(ctx context.Context, apps []model.Application) {
+	for i := range apps {
+		if apps[i].Status == model.AppStatusIdle || apps[i].Status == model.AppStatusBuilding {
+			continue
+		}
+		target, err := targetForApp(s.targets, &apps[i])
+		if err != nil {
+			continue
+		}
+		status, err := target.GetStatus(ctx, &apps[i])
+		if err != nil {
+			continue
+		}
+		var live model.AppStatus
+		switch status.Phase {
+		case "running":
+			live = model.AppStatusRunning
+		case "pending":
+			live = model.AppStatusDeploying
+		case "stopped":
+			live = model.AppStatusStopped
+		case "failed":
+			live = model.AppStatusError
+		case "partial":
+			live = model.AppStatusPartial
+		}
+		if live == "" {
+			continue
+		}
+		// Always overwrite in-memory for accurate response
+		if live != apps[i].Status {
+			apps[i].Status = live
+			// Persist to DB (async — don't block response for DB write)
+			go func(id uuid.UUID, s2 model.AppStatus) {
+				_ = s.store.Applications().UpdateStatus(context.Background(), id, s2)
+			}(apps[i].ID, live)
+		}
+	}
+}
+
+func (s *AppService) Delete(ctx context.Context, id uuid.UUID) error {
+	app, err := s.store.Applications().GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	// Delete K8s resources
+	target, err := targetForApp(s.targets, app)
+	if err != nil {
+		s.logger.Error("failed to resolve deploy target for delete", slog.Any("error", err), slog.String("app", app.Name))
+	} else if err := target.Delete(ctx, app); err != nil {
+		s.logger.Error("failed to delete app from orchestrator", slog.Any("error", err), slog.String("app", app.Name))
+	}
+
+	// Delete associated Ingress resources
+	domains, _ := s.store.Domains().ListByApp(ctx, id)
+	if ingress, ierr := targetIngress(s.targets, app); ierr != nil {
+		s.logger.Warn("failed to resolve ingress target for delete", slog.Any("error", ierr), slog.String("app", app.Name))
+	} else {
+		for _, d := range domains {
+			if err := ingress.DeleteIngress(ctx, &d); err != nil {
+				s.logger.Warn("failed to delete ingress", slog.String("domain", d.Host), slog.Any("error", err))
+			}
+		}
+	}
+
+	if err := s.store.Applications().Delete(ctx, id); err != nil {
+		return err
+	}
+
+	notifyProjectResourceDeleted(s.notifSvc, s.store, s.logger, app.ProjectID, model.EventAppDeleted,
+		app.Name, fmt.Sprintf("Application %q was deleted", app.Name))
+	return nil
+}
+
+func (s *AppService) Scale(ctx context.Context, id uuid.UUID, replicas int32) (*model.Application, error) {
+	app, err := s.store.Applications().GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Block manual scaling when HPA is active
+	if app.Autoscaling != nil && app.Autoscaling.Enabled {
+		return nil, fmt.Errorf("manual scaling is disabled while autoscaling (HPA) is active — disable HPA first")
+	}
+
+	if replicas < 0 || replicas > 100 {
+		return nil, fmt.Errorf("replicas must be between 0 and 100")
+	}
+
+	target, err := targetForApp(s.targets, app)
+	if err != nil {
+		return nil, err
+	}
+	if err := target.Scale(ctx, app, replicas); err != nil {
+		return nil, err
+	}
+
+	app.Replicas = replicas
+	if err := s.store.Applications().Update(ctx, app); err != nil {
+		return nil, err
+	}
+	return app, nil
+}
+
+func (s *AppService) UpdateEnvVars(ctx context.Context, id uuid.UUID, envVars map[string]string) (*model.Application, error) {
+	app, err := s.store.Applications().GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	app.EnvVars = envVars
+	if err := s.store.Applications().Update(ctx, app); err != nil {
+		return nil, err
+	}
+
+	// Push to cluster whenever a deployment exists (including crash-loop / error states).
+	if app.Status != model.AppStatusIdle && app.Status != model.AppStatusStopped && app.Status != model.AppStatusBuilding {
+		mergedEnv := make(map[string]string)
+		project, projErr := s.store.Projects().GetByID(ctx, app.ProjectID)
+		if projErr == nil && project.EnvVars != nil {
+			for k, v := range project.EnvVars {
+				mergedEnv[k] = v
+			}
+		}
+		for k, v := range app.EnvVars {
+			mergedEnv[k] = v
+		}
+		target, err := targetForApp(s.targets, app)
+		if err != nil {
+			s.logger.Error("failed to resolve deploy target for env update", slog.String("app", app.Name), slog.Any("error", err))
+			return nil, fmt.Errorf("environment saved, but failed to apply to running deployment: %w", err)
+		}
+		if err := target.UpdateEnvVars(ctx, app, mergedEnv); err != nil {
+			s.logger.Error("failed to push env vars to deployment", slog.String("app", app.Name), slog.Any("error", err))
+			return nil, fmt.Errorf("environment saved, but failed to apply to running deployment: %w", err)
+		}
+	}
+
+	s.logger.Info("env vars updated", slog.String("app", app.Name), slog.Int("count", len(envVars)))
+	return app, nil
+}
+
+func (s *AppService) GetStatus(ctx context.Context, id uuid.UUID) (*orchestrator.AppStatus, error) {
+	app, err := s.store.Applications().GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	target, err := targetForApp(s.targets, app)
+	if err != nil {
+		return nil, err
+	}
+	status, err := target.GetStatus(ctx, app)
+	if err != nil {
+		return nil, err
+	}
+
+	// Reconcile DB status with live K8s status.
+	// Only update DB when K8s has settled into a stable state AND
+	// the DB still holds a transitional status from a previous operation.
+	// Reconcile DB status with actual K8s state
+	var dbStatus model.AppStatus
+	switch status.Phase {
+	case "running":
+		dbStatus = model.AppStatusRunning
+	case "stopped":
+		dbStatus = model.AppStatusStopped
+	case "failed":
+		dbStatus = model.AppStatusError
+	case "not deployed":
+		dbStatus = model.AppStatusStopped
+	}
+	// Update DB if K8s state differs from stored status
+	if dbStatus != "" && dbStatus != app.Status {
+		_ = s.store.Applications().UpdateStatus(ctx, id, dbStatus)
+	}
+
+	return status, nil
+}
+
+func (s *AppService) GetPods(ctx context.Context, id uuid.UUID) ([]orchestrator.PodInfo, error) {
+	app, err := s.store.Applications().GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	target, err := targetForApp(s.targets, app)
+	if err != nil {
+		return nil, err
+	}
+	return target.GetPods(ctx, app)
+}
+
+func (s *AppService) Restart(ctx context.Context, id uuid.UUID) error {
+	app, err := s.store.Applications().GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	// Only allow restart on running/partial apps
+	switch app.Status {
+	case model.AppStatusRunning, model.AppStatusPartial, model.AppStatusError:
+		// OK
+	default:
+		return fmt.Errorf("cannot restart app in %s state", app.Status)
+	}
+
+	_ = s.store.Applications().UpdateStatus(ctx, id, model.AppStatusRestarting)
+
+	target, err := targetForApp(s.targets, app)
+	if err != nil {
+		_ = s.store.Applications().UpdateStatus(ctx, id, model.AppStatusError)
+		return err
+	}
+	if err := target.Restart(ctx, app); err != nil {
+		_ = s.store.Applications().UpdateStatus(ctx, id, model.AppStatusError)
+		return err
+	}
+
+	return nil
+}
+
+func (s *AppService) Stop(ctx context.Context, id uuid.UUID) error {
+	app, err := s.store.Applications().GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	// Only allow stop on running/partial/error apps
+	switch app.Status {
+	case model.AppStatusRunning, model.AppStatusPartial, model.AppStatusError:
+		// OK
+	default:
+		return fmt.Errorf("cannot stop app in %s state", app.Status)
+	}
+
+	// Suspend HPA first to prevent it from scaling back up
+	if app.Autoscaling != nil && app.Autoscaling.Enabled {
+		target, terr := targetForApp(s.targets, app)
+		if terr != nil {
+			return fmt.Errorf("cannot stop: failed to resolve deploy target: %w", terr)
+		}
+		if err := target.DeleteHPA(ctx, app); err != nil {
+			return fmt.Errorf("cannot stop: failed to remove HPA (app would be scaled back up): %w", err)
+		}
+	}
+
+	_ = s.store.Applications().UpdateStatus(ctx, id, model.AppStatusStopping)
+
+	target, err := targetForApp(s.targets, app)
+	if err != nil {
+		_ = s.store.Applications().UpdateStatus(ctx, id, model.AppStatusError)
+		return err
+	}
+	if err := target.Stop(ctx, app); err != nil {
+		_ = s.store.Applications().UpdateStatus(ctx, id, model.AppStatusError)
+		return err
+	}
+	return s.store.Applications().UpdateStatus(ctx, id, model.AppStatusStopped)
+}
+
+func (s *AppService) ClearBuildCache(ctx context.Context, id uuid.UUID) error {
+	app, err := s.store.Applications().GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	builder, err := targetBuilder(s.targets, app)
+	if err != nil {
+		return err
+	}
+	return builder.ClearBuildCache(ctx, app)
+}
+
+// ============================================================================
+// Webhook Management
+// ============================================================================
+
+type WebhookConfig struct {
+	WebhookURL string `json:"webhook_url"`
+	Secret     string `json:"secret"`
+	AutoDeploy bool   `json:"auto_deploy"`
+}
+
+func (s *AppService) EnableWebhook(ctx context.Context, id uuid.UUID, baseURL string) (*WebhookConfig, error) {
+	app, err := s.store.Applications().GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Generate webhook secret
+	secret := "whsec_" + randomHex(16)
+	app.WebhookSecret = secret
+	app.AutoDeploy = true
+
+	if err := s.store.Applications().Update(ctx, app); err != nil {
+		return nil, err
+	}
+
+	// Determine webhook URL based on source type/provider
+	provider := "github"
+	if strings.Contains(app.GitRepo, "gitlab") {
+		provider = "gitlab"
+	}
+
+	webhookURL := fmt.Sprintf("%s/api/v1/webhooks/%s/%s", baseURL, provider, app.ID)
+
+	return &WebhookConfig{
+		WebhookURL: webhookURL,
+		Secret:     secret,
+		AutoDeploy: true,
+	}, nil
+}
+
+func (s *AppService) DisableWebhook(ctx context.Context, id uuid.UUID) error {
+	app, err := s.store.Applications().GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	app.AutoDeploy = false
+	return s.store.Applications().Update(ctx, app)
+}
+
+func (s *AppService) RegenerateWebhookSecret(ctx context.Context, id uuid.UUID, baseURL string) (*WebhookConfig, error) {
+	return s.EnableWebhook(ctx, id, baseURL)
+}
+
+func (s *AppService) GetWebhookConfig(ctx context.Context, id uuid.UUID, baseURL string) (*WebhookConfig, error) {
+	app, err := s.store.Applications().GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	provider := "github"
+	if strings.Contains(app.GitRepo, "gitlab") {
+		provider = "gitlab"
+	}
+
+	return &WebhookConfig{
+		WebhookURL: fmt.Sprintf("%s/api/v1/webhooks/%s/%s", baseURL, provider, app.ID),
+		Secret:     app.WebhookSecret,
+		AutoDeploy: app.AutoDeploy,
+	}, nil
+}
+
+// ============================================================================
+// Secrets Management
+// ============================================================================
+
+func (s *AppService) GetSecretKeys(ctx context.Context, id uuid.UUID) ([]string, error) {
+	app, err := s.store.Applications().GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	keys := make([]string, 0, len(app.Secrets))
+	for k := range app.Secrets {
+		keys = append(keys, k)
+	}
+	return keys, nil
+}
+
+func (s *AppService) UpdateSecrets(ctx context.Context, id uuid.UUID, secrets map[string]string) ([]string, error) {
+	app, err := s.store.Applications().GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	// Save old secrets for rollback
+	oldSecrets := make(map[string]string)
+	for k, v := range app.Secrets {
+		oldSecrets[k] = v
+	}
+
+	// Merge: only overwrite keys that have non-empty values; empty value = delete key
+	if app.Secrets == nil {
+		app.Secrets = make(map[string]string)
+	}
+	for k, v := range secrets {
+		if v == "" {
+			delete(app.Secrets, k)
+		} else {
+			app.Secrets[k] = v
+		}
+	}
+	if err := s.store.Applications().Update(ctx, app); err != nil {
+		return nil, err
+	}
+
+	// Create/update the K8s Secret — rollback DB on failure
+	sink, err := targetSecrets(s.targets, app)
+	if err != nil {
+		s.logger.Error("failed to resolve secrets target", slog.Any("error", err), slog.String("app", app.Name))
+		app.Secrets = oldSecrets
+		_ = s.store.Applications().Update(ctx, app)
+		return nil, fmt.Errorf("failed to apply secrets to cluster (rolled back): %w", err)
+	}
+	if err := sink.EnsureSecret(ctx, app, app.Secrets); err != nil {
+		s.logger.Error("failed to ensure K8s secret", slog.Any("error", err), slog.String("app", app.Name))
+		app.Secrets = oldSecrets
+		_ = s.store.Applications().Update(ctx, app)
+		return nil, fmt.Errorf("failed to apply secrets to cluster (rolled back): %w", err)
+	}
+
+	keys := make([]string, 0, len(app.Secrets))
+	for k := range app.Secrets {
+		keys = append(keys, k)
+	}
+	s.logger.Info("secrets updated", slog.String("app", app.Name), slog.Int("count", len(secrets)))
+	return keys, nil
+}
+
+// TargetCapabilities describes deploy-target features available to an application.
+type TargetCapabilities struct {
+	TargetID              uuid.UUID                 `json:"target_id"`
+	Kind                  string                    `json:"kind"`
+	Capabilities          []orchestrator.Capability `json:"capabilities"`
+	DefaultStorageClass   string                    `json:"default_storage_class,omitempty"`
+	AllowedStorageClasses []string                  `json:"allowed_storage_classes,omitempty"`
+}
+
+// GetTargetCapabilities returns the capability set for the app's deploy target.
+func (s *AppService) GetTargetCapabilities(ctx context.Context, id uuid.UUID) (*TargetCapabilities, error) {
+	app, err := s.store.Applications().GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	target, err := targetForApp(s.targets, app)
+	if err != nil {
+		return nil, err
+	}
+	caps := &TargetCapabilities{
+		TargetID:     target.ID(),
+		Kind:         target.Kind(),
+		Capabilities: target.Capabilities().List(),
+	}
+	rec, err := deployTargetRecord(ctx, s.store, app)
+	if err != nil {
+		return nil, fmt.Errorf("deploy target: %w", err)
+	}
+	caps.DefaultStorageClass = rec.Config.DefaultStorageClass
+	caps.AllowedStorageClasses = rec.Config.AllowedStorageClasses
+	return caps, nil
+}
+
+// sanitizeK8sName normalizes a name to a valid K8s resource name.
+// Must match the logic in orchestrator/k3s/deploy.go sanitize().
+func sanitizeK8sName(name string) string {
+	n := strings.ToLower(name)
+	n = strings.ReplaceAll(n, "_", "-")
+	n = strings.ReplaceAll(n, " ", "-")
+	if len(n) > 63 {
+		n = n[:63]
+	}
+	return n
+}
+
+func randomHex(n int) string {
+	b := make([]byte, n)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
+}

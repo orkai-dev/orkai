@@ -1,0 +1,6688 @@
+basePath: /api/v1
+definitions:
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.APIKey:
+    properties:
+      created_at:
+        type: string
+      expires_at:
+        type: string
+      id:
+        type: string
+      key_prefix:
+        type: string
+      last_used_at:
+        type: string
+      name:
+        type: string
+      org_id:
+        type: string
+      role:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.Role'
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.Application:
+    properties:
+      auto_deploy:
+        type: boolean
+      autoscaling:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.AutoscalingConfig'
+      build_args:
+        additionalProperties:
+          type: string
+        type: object
+      build_context:
+        type: string
+      build_env_vars:
+        additionalProperties:
+          type: string
+        type: object
+      build_type:
+        allOf:
+        - $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.BuildType'
+        description: Build configuration
+      compose_file:
+        type: string
+      cpu_limit:
+        type: string
+      cpu_request:
+        type: string
+      created_at:
+        type: string
+      deploy_strategy:
+        type: string
+      deploy_strategy_config:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.DeployStrategyConfig'
+      description:
+        type: string
+      docker_image:
+        type: string
+      dockerfile:
+        type: string
+      env_vars:
+        additionalProperties:
+          type: string
+        type: object
+      git_branch:
+        type: string
+      git_provider_id:
+        type: string
+      git_repo:
+        type: string
+      health_check:
+        allOf:
+        - $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.HealthCheck'
+        description: Advanced configuration
+      id:
+        type: string
+      is_critical:
+        description: Metadata
+        type: boolean
+      k8s_name:
+        type: string
+      mem_limit:
+        type: string
+      mem_request:
+        type: string
+      name:
+        type: string
+      namespace:
+        description: K8s mapping (runtime config for k3s targets)
+        type: string
+      no_cache:
+        type: boolean
+      node_pool:
+        type: string
+      ports:
+        items:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.PortMapping'
+        type: array
+      project_id:
+        type: string
+      provider:
+        type: string
+      region:
+        type: string
+      registry_id:
+        type: string
+      replicas:
+        description: Runtime configuration
+        type: integer
+      source_type:
+        allOf:
+        - $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.SourceType'
+        description: Source configuration
+      status:
+        allOf:
+        - $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.AppStatus'
+        description: Status
+      target_id:
+        description: Deploy target
+        type: string
+      termination_grace_period:
+        type: integer
+      updated_at:
+        type: string
+      volumes:
+        items:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.VolumeMount'
+        type: array
+      watch_paths:
+        items:
+          type: string
+        type: array
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.ApplicationListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.Application'
+        type: array
+      pagination:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_httputil.Pagination'
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.AuthResult:
+    properties:
+      access_token:
+        type: string
+      expires_at:
+        type: string
+      oauth_2fa_challenge:
+        type: string
+      refresh_token:
+        type: string
+      requires_2fa:
+        type: boolean
+      user:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.User'
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.ChangePasswordInput:
+    properties:
+      current_password:
+        type: string
+      new_password:
+        minLength: 8
+        type: string
+    required:
+    - current_password
+    - new_password
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.CreateAppInput:
+    properties:
+      build_type:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.BuildType'
+      cpu_limit:
+        type: string
+      docker_image:
+        type: string
+      dockerfile:
+        type: string
+      env_vars:
+        additionalProperties:
+          type: string
+        type: object
+      git_branch:
+        type: string
+      git_provider_id:
+        type: string
+      git_repo:
+        type: string
+      is_critical:
+        type: boolean
+      mem_limit:
+        type: string
+      name:
+        maxLength: 63
+        minLength: 1
+        type: string
+      ports:
+        items:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.PortMapping'
+        type: array
+      project_id:
+        type: string
+      registry_id:
+        type: string
+      replicas:
+        type: integer
+      source_type:
+        allOf:
+        - $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.SourceType'
+        enum:
+        - git
+        - image
+    required:
+    - name
+    - project_id
+    - source_type
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.CreateCronJobInput:
+    properties:
+      active_deadline_seconds:
+        type: integer
+      backoff_limit:
+        type: integer
+      command:
+        type: string
+      concurrency_policy:
+        type: string
+      cpu_limit:
+        type: string
+      cron_expression:
+        type: string
+      description:
+        type: string
+      enabled:
+        type: boolean
+      env_vars:
+        additionalProperties:
+          type: string
+        type: object
+      git_branch:
+        type: string
+      git_repo:
+        type: string
+      image:
+        type: string
+      mem_limit:
+        type: string
+      name:
+        maxLength: 63
+        minLength: 1
+        type: string
+      project_id:
+        type: string
+      restart_policy:
+        type: string
+      source_type:
+        type: string
+      timezone:
+        type: string
+    required:
+    - command
+    - cron_expression
+    - name
+    - project_id
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.CreateDatabaseInput:
+    properties:
+      cpu_limit:
+        type: string
+      database_name:
+        type: string
+      engine:
+        allOf:
+        - $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.DBEngine'
+        enum:
+        - postgres
+        - mysql
+        - mariadb
+        - redis
+        - valkey
+        - mongo
+      mem_limit:
+        type: string
+      name:
+        maxLength: 63
+        minLength: 1
+        type: string
+      project_id:
+        type: string
+      storage_size:
+        type: string
+      version:
+        type: string
+    required:
+    - engine
+    - name
+    - project_id
+    - version
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.CreateDomainInput:
+    properties:
+      auto_cert:
+        type: boolean
+      host:
+        type: string
+      tls:
+        type: boolean
+    required:
+    - host
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.CreateNodeInput:
+    properties:
+      auth_type:
+        description: password | ssh_key
+        type: string
+      host:
+        type: string
+      name:
+        type: string
+      password:
+        type: string
+      port:
+        type: integer
+      role:
+        description: worker | server
+        type: string
+      ssh_key_id:
+        type: string
+      ssh_user:
+        type: string
+    required:
+    - host
+    - name
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.CreatePageInput:
+    properties:
+      build_command:
+        type: string
+      build_enabled:
+        description: Build configuration (optional).
+        type: boolean
+      build_env_vars:
+        additionalProperties:
+          type: string
+        type: object
+      cloud_account_id:
+        type: string
+      custom_domain:
+        type: string
+      description:
+        type: string
+      dns_account_id:
+        type: string
+      dns_zone_id:
+        type: string
+      git_branch:
+        type: string
+      git_provider_id:
+        type: string
+      git_repo:
+        type: string
+      install_command:
+        type: string
+      manage_dns:
+        type: boolean
+      name:
+        maxLength: 63
+        minLength: 1
+        type: string
+      node_version:
+        type: string
+      output_dir:
+        type: string
+      package_manager:
+        type: string
+      project_id:
+        type: string
+      provider:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.PageProvider'
+      publish_path:
+        type: string
+      region:
+        type: string
+      root_directory:
+        type: string
+    required:
+    - git_repo
+    - name
+    - project_id
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.CreateProjectInput:
+    properties:
+      description:
+        type: string
+      environment:
+        allOf:
+        - $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.Environment'
+        enum:
+        - prod
+        - testing
+        - sandbox
+        - qa
+        - poc
+        - development
+      name:
+        maxLength: 63
+        minLength: 1
+        type: string
+      team_id:
+        type: string
+    required:
+    - environment
+    - name
+    - team_id
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.CreateResourceInput:
+    properties:
+      config:
+        items:
+          type: integer
+        type: array
+      name:
+        type: string
+      provider:
+        type: string
+      type:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.ResourceType'
+    required:
+    - type
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.CronJob:
+    properties:
+      active_deadline_seconds:
+        type: integer
+      backoff_limit:
+        type: integer
+      command:
+        type: string
+      concurrency_policy:
+        type: string
+      cpu_limit:
+        type: string
+      created_at:
+        type: string
+      cron_expression:
+        type: string
+      description:
+        type: string
+      enabled:
+        type: boolean
+      env_vars:
+        additionalProperties:
+          type: string
+        description: Config
+        type: object
+      git_branch:
+        type: string
+      git_repo:
+        type: string
+      id:
+        type: string
+      image:
+        description: Source
+        type: string
+      k8s_name:
+        type: string
+      last_run_at:
+        description: Status
+        type: string
+      mem_limit:
+        type: string
+      name:
+        type: string
+      namespace:
+        description: K8s
+        type: string
+      project_id:
+        type: string
+      restart_policy:
+        type: string
+      source_type:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.SourceType'
+      status:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.CronJobStatus'
+      timezone:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.CronJobListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.CronJob'
+        type: array
+      pagination:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_httputil.Pagination'
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.DNSDeleteRecordInput:
+    properties:
+      name:
+        type: string
+      ttl:
+        type: integer
+      type:
+        type: string
+      values:
+        items:
+          type: string
+        minItems: 1
+        type: array
+      zone_id:
+        type: string
+    required:
+    - name
+    - type
+    - values
+    - zone_id
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.DNSUpsertRecordInput:
+    properties:
+      name:
+        type: string
+      ttl:
+        type: integer
+      type:
+        type: string
+      values:
+        items:
+          type: string
+        minItems: 1
+        type: array
+      zone_id:
+        type: string
+    required:
+    - name
+    - type
+    - values
+    - zone_id
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.DatabaseListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.ManagedDatabase'
+        type: array
+      pagination:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_httputil.Pagination'
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.Deployment:
+    properties:
+      app_id:
+        type: string
+      app_name:
+        description: Denormalized for global queries
+        type: string
+      build_log:
+        type: string
+      cancel_requested:
+        type: boolean
+      commit_sha:
+        type: string
+      created_at:
+        type: string
+      finished_at:
+        type: string
+      id:
+        type: string
+      image:
+        type: string
+      project_id:
+        type: string
+      started_at:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.DeployStatus'
+      trigger_type:
+        description: Who triggered the deployment
+        type: string
+      triggered_by:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.DeploymentListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.Deployment'
+        type: array
+      pagination:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_httputil.Pagination'
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.Domain:
+    properties:
+      app_id:
+        type: string
+      auto_cert:
+        type: boolean
+      cert_expiry:
+        type: string
+      cert_secret:
+        type: string
+      created_at:
+        type: string
+      force_https:
+        type: boolean
+      host:
+        type: string
+      id:
+        type: string
+      ingress_ready:
+        type: boolean
+      tls:
+        type: boolean
+      updated_at:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.LoginInput:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+      two_fa_code:
+        description: Required if user has 2FA enabled
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.ManagedDatabase:
+    properties:
+      backup_enabled:
+        description: Backup configuration
+        type: boolean
+      backup_s3_id:
+        type: string
+      backup_schedule:
+        type: string
+      cpu_limit:
+        type: string
+      created_at:
+        type: string
+      database_name:
+        type: string
+      engine:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.DBEngine'
+      external_enabled:
+        type: boolean
+      external_port:
+        description: External access
+        type: integer
+      id:
+        type: string
+      k8s_name:
+        type: string
+      mem_limit:
+        type: string
+      name:
+        type: string
+      namespace:
+        description: K8s mapping
+        type: string
+      project_id:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.AppStatus'
+      storage_size:
+        description: Resources
+        type: string
+      updated_at:
+        type: string
+      version:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.MessageResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.NodeListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.ServerNode'
+        type: array
+      pagination:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_httputil.Pagination'
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.Page:
+    properties:
+      auto_deploy:
+        type: boolean
+      build_command:
+        description: empty = inferred "<pm> run build"
+        type: string
+      build_enabled:
+        description: |-
+          Build configuration. When BuildEnabled is true, the site is built in an
+          in-cluster Kubernetes build pod (npm/pnpm) and the contents of
+          RootDirectory/OutputDir are synced instead of PublishPath.
+        type: boolean
+      build_env_vars:
+        additionalProperties:
+          type: string
+        type: object
+      cloud_account_id:
+        type: string
+      created_at:
+        type: string
+      custom_domain:
+        description: |-
+          Custom domain (optional). ACM cert is always us-east-1; DNS may use a
+          different cloud_account than CloudFront/S3.
+        type: string
+      description:
+        type: string
+      dns_account_id:
+        type: string
+      dns_zone_id:
+        type: string
+      git_branch:
+        type: string
+      git_provider_id:
+        type: string
+      git_repo:
+        description: Git source
+        type: string
+      id:
+        type: string
+      install_command:
+        description: empty = inferred default
+        type: string
+      manage_dns:
+        type: boolean
+      name:
+        type: string
+      node_version:
+        description: optional; default in code
+        type: string
+      output_dir:
+        description: build output folder, e.g. "dist"
+        type: string
+      package_manager:
+        description: auto | npm | pnpm
+        type: string
+      project_id:
+        type: string
+      provider:
+        allOf:
+        - $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.PageProvider'
+        description: Provider + cloud account
+      publish_path:
+        description: |-
+          PublishPath is the folder in the repo whose contents are synced to the
+          bucket root. Default "." = repo root. Used when BuildEnabled is false
+          (pre-built static files committed to the repo).
+        type: string
+      region:
+        type: string
+      root_directory:
+        description: monorepo subdir holding package.json
+        type: string
+      runtime:
+        allOf:
+        - $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.PageRuntime'
+        description: Runtime state (AWS resource IDs), persisted incrementally.
+      status:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.PageStatus'
+      updated_at:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.PageListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.Page'
+        type: array
+      pagination:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_httputil.Pagination'
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail:
+    properties:
+      detail:
+        type: string
+      errors:
+        items:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apierr.FieldError'
+        type: array
+      instance:
+        type: string
+      status:
+        type: integer
+      title:
+        type: string
+      type:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.Project:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      env_vars:
+        additionalProperties:
+          type: string
+        description: Project environment (shared by all services)
+        type: object
+      environment:
+        allOf:
+        - $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.Environment'
+        description: Metadata
+      id:
+        type: string
+      name:
+        type: string
+      namespace:
+        type: string
+      network_policy_enabled:
+        type: boolean
+      org_id:
+        type: string
+      resource_quota:
+        allOf:
+        - $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.ResourceQuotaConfig'
+        description: Resource controls
+      service_account:
+        description: Service account
+        type: string
+      team:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.Team'
+      team_id:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProjectListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.Project'
+        type: array
+      pagination:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_httputil.Pagination'
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.RefreshInput:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.RegisterInput:
+    properties:
+      display_name:
+        type: string
+      email:
+        type: string
+      org_name:
+        type: string
+      password:
+        minLength: 8
+        type: string
+    required:
+    - display_name
+    - email
+    - org_name
+    - password
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.ResourceListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.SharedResource'
+        type: array
+      pagination:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_httputil.Pagination'
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.SMTPConfig:
+    properties:
+      enabled:
+        type: boolean
+      from:
+        type: string
+      host:
+        type: string
+      password:
+        type: string
+      port:
+        type: string
+      user:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.ServerNode:
+    properties:
+      auth_type:
+        description: password | ssh_key
+        type: string
+      created_at:
+        type: string
+      host:
+        type: string
+      id:
+        type: string
+      k8s_node_name:
+        type: string
+      name:
+        type: string
+      port:
+        type: integer
+      role:
+        description: worker | server
+        type: string
+      ssh_key_id:
+        type: string
+      ssh_user:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.NodeStatus'
+      status_msg:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.SetupStatus:
+    properties:
+      initialized:
+        type: boolean
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.SharedResource:
+    properties:
+      config:
+        items:
+          type: integer
+        type: array
+      created_at:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      org_id:
+        type: string
+      provider:
+        description: github | gitlab | dockerhub | ghcr | custom
+        type: string
+      status:
+        type: string
+      type:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.ResourceType'
+      updated_at:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.SystemBackupConfig:
+    properties:
+      enabled:
+        type: boolean
+      path:
+        type: string
+      retention:
+        type: integer
+      s3_id:
+        type: string
+      schedule:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.Template:
+    properties:
+      category:
+        type: string
+      compose_yaml:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      env_schema:
+        additionalProperties:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.EnvVar'
+        type: object
+      id:
+        type: string
+      logo_url:
+        type: string
+      min_cpu:
+        type: string
+      min_memory:
+        type: string
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.TemplateListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.Template'
+        type: array
+      pagination:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_httputil.Pagination'
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.UpdateAppInput:
+    properties:
+      autoscaling:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.AutoscalingConfig'
+      build_args:
+        additionalProperties:
+          type: string
+        type: object
+      build_context:
+        type: string
+      build_env_vars:
+        additionalProperties:
+          type: string
+        type: object
+      build_type:
+        description: Build configuration
+        type: string
+      cpu_limit:
+        description: Runtime configuration
+        type: string
+      cpu_request:
+        type: string
+      deploy_strategy:
+        type: string
+      deploy_strategy_config:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.DeployStrategyConfig'
+      docker_image:
+        type: string
+      dockerfile:
+        type: string
+      git_branch:
+        type: string
+      git_repo:
+        description: Source configuration
+        type: string
+      health_check:
+        allOf:
+        - $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.HealthCheck'
+        description: Advanced configuration
+      is_critical:
+        description: Metadata
+        type: boolean
+      mem_limit:
+        type: string
+      mem_request:
+        type: string
+      no_cache:
+        type: boolean
+      node_pool:
+        type: string
+      ports:
+        items:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.PortMapping'
+        type: array
+      registry_id:
+        type: string
+      termination_grace_period:
+        type: integer
+      volumes:
+        items:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.VolumeMount'
+        type: array
+      watch_paths:
+        items:
+          type: string
+        type: array
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.UpdateBackupInput:
+    properties:
+      enabled:
+        type: boolean
+      s3_id:
+        type: string
+      schedule:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.UpdateCronJobInput:
+    properties:
+      active_deadline_seconds:
+        type: integer
+      backoff_limit:
+        type: integer
+      command:
+        type: string
+      concurrency_policy:
+        type: string
+      cpu_limit:
+        type: string
+      cron_expression:
+        type: string
+      description:
+        type: string
+      enabled:
+        type: boolean
+      env_vars:
+        additionalProperties:
+          type: string
+        type: object
+      image:
+        type: string
+      mem_limit:
+        type: string
+      restart_policy:
+        type: string
+      timezone:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.UpdatePageInput:
+    properties:
+      build_command:
+        type: string
+      build_enabled:
+        description: Build configuration (optional).
+        type: boolean
+      build_env_vars:
+        additionalProperties:
+          type: string
+        type: object
+      cloud_account_id:
+        type: string
+      custom_domain:
+        type: string
+      description:
+        type: string
+      dns_account_id:
+        type: string
+      dns_zone_id:
+        type: string
+      git_branch:
+        type: string
+      git_provider_id:
+        type: string
+      git_repo:
+        type: string
+      install_command:
+        type: string
+      manage_dns:
+        type: boolean
+      node_version:
+        type: string
+      output_dir:
+        type: string
+      package_manager:
+        type: string
+      publish_path:
+        type: string
+      region:
+        type: string
+      root_directory:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.UpdateProfileInput:
+    properties:
+      avatar_url:
+        type: string
+      display_name:
+        type: string
+      first_name:
+        type: string
+      last_name:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.UpdateProjectInput:
+    properties:
+      description:
+        type: string
+      env_vars:
+        additionalProperties:
+          type: string
+        type: object
+      environment:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.Environment'
+      name:
+        maxLength: 63
+        minLength: 1
+        type: string
+      network_policy_enabled:
+        type: boolean
+      resource_quota:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.ResourceQuotaConfig'
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.UpdateResourceInput:
+    properties:
+      config:
+        items:
+          type: integer
+        type: array
+      name:
+        type: string
+      provider:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.User:
+    properties:
+      avatar_url:
+        type: string
+      created_at:
+        type: string
+      display_name:
+        type: string
+      email:
+        description: uniqueness enforced via partial index idx_users_email_active
+          (active rows only)
+        type: string
+      first_name:
+        type: string
+      id:
+        type: string
+      is_super_admin:
+        type: boolean
+      last_name:
+        type: string
+      org_id:
+        type: string
+      role:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.Role'
+      two_fa_enabled:
+        type: boolean
+      updated_at:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apidocs.Verify2FAInput:
+    properties:
+      code:
+        type: string
+    required:
+    - code
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_apierr.FieldError:
+    properties:
+      field:
+        type: string
+      message:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_httputil.Pagination:
+    properties:
+      page:
+        type: integer
+      per_page:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_model.AppStatus:
+    enum:
+    - idle
+    - building
+    - deploying
+    - restarting
+    - running
+    - partial
+    - stopping
+    - stopped
+    - error
+    type: string
+    x-enum-comments:
+      AppStatusPartial: some replicas not ready
+    x-enum-descriptions:
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - some replicas not ready
+    - ""
+    - ""
+    - ""
+    x-enum-varnames:
+    - AppStatusIdle
+    - AppStatusBuilding
+    - AppStatusDeploying
+    - AppStatusRestarting
+    - AppStatusRunning
+    - AppStatusPartial
+    - AppStatusStopping
+    - AppStatusStopped
+    - AppStatusError
+  github_com_orkai-dev_orkai_apps_api_internal_model.Application:
+    properties:
+      auto_deploy:
+        type: boolean
+      autoscaling:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.AutoscalingConfig'
+      build_args:
+        additionalProperties:
+          type: string
+        type: object
+      build_context:
+        type: string
+      build_env_vars:
+        additionalProperties:
+          type: string
+        type: object
+      build_type:
+        allOf:
+        - $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.BuildType'
+        description: Build configuration
+      compose_file:
+        type: string
+      cpu_limit:
+        type: string
+      cpu_request:
+        type: string
+      created_at:
+        type: string
+      deploy_strategy:
+        type: string
+      deploy_strategy_config:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.DeployStrategyConfig'
+      description:
+        type: string
+      docker_image:
+        type: string
+      dockerfile:
+        type: string
+      env_vars:
+        additionalProperties:
+          type: string
+        type: object
+      git_branch:
+        type: string
+      git_provider_id:
+        type: string
+      git_repo:
+        type: string
+      health_check:
+        allOf:
+        - $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.HealthCheck'
+        description: Advanced configuration
+      id:
+        type: string
+      is_critical:
+        description: Metadata
+        type: boolean
+      k8s_name:
+        type: string
+      mem_limit:
+        type: string
+      mem_request:
+        type: string
+      name:
+        type: string
+      namespace:
+        description: K8s mapping (runtime config for k3s targets)
+        type: string
+      no_cache:
+        type: boolean
+      node_pool:
+        type: string
+      ports:
+        items:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.PortMapping'
+        type: array
+      project_id:
+        type: string
+      provider:
+        type: string
+      region:
+        type: string
+      registry_id:
+        type: string
+      replicas:
+        description: Runtime configuration
+        type: integer
+      source_type:
+        allOf:
+        - $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.SourceType'
+        description: Source configuration
+      status:
+        allOf:
+        - $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.AppStatus'
+        description: Status
+      target_id:
+        description: Deploy target
+        type: string
+      termination_grace_period:
+        type: integer
+      updated_at:
+        type: string
+      volumes:
+        items:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.VolumeMount'
+        type: array
+      watch_paths:
+        items:
+          type: string
+        type: array
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_model.AutoscalingConfig:
+    properties:
+      cpu_target:
+        description: percentage, 0 = disabled
+        type: integer
+      enabled:
+        type: boolean
+      max_replicas:
+        type: integer
+      mem_target:
+        description: percentage, 0 = disabled
+        type: integer
+      min_replicas:
+        type: integer
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_model.BuildType:
+    enum:
+    - dockerfile
+    - buildpacks
+    - nixpacks
+    type: string
+    x-enum-varnames:
+    - BuildDockerfile
+    - BuildBuildpacks
+    - BuildNixpacks
+  github_com_orkai-dev_orkai_apps_api_internal_model.CronJob:
+    properties:
+      active_deadline_seconds:
+        type: integer
+      backoff_limit:
+        type: integer
+      command:
+        type: string
+      concurrency_policy:
+        type: string
+      cpu_limit:
+        type: string
+      created_at:
+        type: string
+      cron_expression:
+        type: string
+      description:
+        type: string
+      enabled:
+        type: boolean
+      env_vars:
+        additionalProperties:
+          type: string
+        description: Config
+        type: object
+      git_branch:
+        type: string
+      git_repo:
+        type: string
+      id:
+        type: string
+      image:
+        description: Source
+        type: string
+      k8s_name:
+        type: string
+      last_run_at:
+        description: Status
+        type: string
+      mem_limit:
+        type: string
+      name:
+        type: string
+      namespace:
+        description: K8s
+        type: string
+      project_id:
+        type: string
+      restart_policy:
+        type: string
+      source_type:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.SourceType'
+      status:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.CronJobStatus'
+      timezone:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_model.CronJobStatus:
+    enum:
+    - idle
+    - running
+    - error
+    type: string
+    x-enum-varnames:
+    - CronJobIdle
+    - CronJobRunning
+    - CronJobError
+  github_com_orkai-dev_orkai_apps_api_internal_model.DBEngine:
+    enum:
+    - postgres
+    - mysql
+    - mariadb
+    - redis
+    - valkey
+    - mongo
+    type: string
+    x-enum-varnames:
+    - DBPostgres
+    - DBMySQL
+    - DBMariaDB
+    - DBRedis
+    - DBValkey
+    - DBMongo
+  github_com_orkai-dev_orkai_apps_api_internal_model.DeployStatus:
+    enum:
+    - queued
+    - building
+    - deploying
+    - success
+    - failed
+    - cancelled
+    type: string
+    x-enum-varnames:
+    - DeployQueued
+    - DeployBuilding
+    - DeployDeploying
+    - DeploySuccess
+    - DeployFailed
+    - DeployCancelled
+  github_com_orkai-dev_orkai_apps_api_internal_model.DeployStrategyConfig:
+    properties:
+      max_surge:
+        description: '"25%" or "1"'
+        type: string
+      max_unavailable:
+        description: '"25%" or "0"'
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_model.Deployment:
+    properties:
+      app_id:
+        type: string
+      app_name:
+        description: Denormalized for global queries
+        type: string
+      build_log:
+        type: string
+      cancel_requested:
+        type: boolean
+      commit_sha:
+        type: string
+      created_at:
+        type: string
+      finished_at:
+        type: string
+      id:
+        type: string
+      image:
+        type: string
+      project_id:
+        type: string
+      started_at:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.DeployStatus'
+      trigger_type:
+        description: Who triggered the deployment
+        type: string
+      triggered_by:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_model.EnvVar:
+    properties:
+      default:
+        type: string
+      description:
+        type: string
+      required:
+        type: boolean
+      secret:
+        type: boolean
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_model.Environment:
+    enum:
+    - prod
+    - testing
+    - sandbox
+    - qa
+    - poc
+    - development
+    type: string
+    x-enum-varnames:
+    - EnvProd
+    - EnvTesting
+    - EnvSandbox
+    - EnvQA
+    - EnvPOC
+    - EnvDevelopment
+  github_com_orkai-dev_orkai_apps_api_internal_model.HealthCheck:
+    properties:
+      command:
+        description: for exec type
+        type: string
+      failure_threshold:
+        type: integer
+      initial_delay_seconds:
+        type: integer
+      path:
+        type: string
+      period_seconds:
+        type: integer
+      port:
+        type: integer
+      timeout_seconds:
+        type: integer
+      type:
+        description: http | tcp | exec
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_model.ManagedDatabase:
+    properties:
+      backup_enabled:
+        description: Backup configuration
+        type: boolean
+      backup_s3_id:
+        type: string
+      backup_schedule:
+        type: string
+      cpu_limit:
+        type: string
+      created_at:
+        type: string
+      database_name:
+        type: string
+      engine:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.DBEngine'
+      external_enabled:
+        type: boolean
+      external_port:
+        description: External access
+        type: integer
+      id:
+        type: string
+      k8s_name:
+        type: string
+      mem_limit:
+        type: string
+      name:
+        type: string
+      namespace:
+        description: K8s mapping
+        type: string
+      project_id:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.AppStatus'
+      storage_size:
+        description: Resources
+        type: string
+      updated_at:
+        type: string
+      version:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_model.NodeStatus:
+    enum:
+    - pending
+    - initializing
+    - ready
+    - error
+    - offline
+    type: string
+    x-enum-varnames:
+    - NodeStatusPending
+    - NodeStatusInitializing
+    - NodeStatusReady
+    - NodeStatusError
+    - NodeStatusOffline
+  github_com_orkai-dev_orkai_apps_api_internal_model.Page:
+    properties:
+      auto_deploy:
+        type: boolean
+      build_command:
+        description: empty = inferred "<pm> run build"
+        type: string
+      build_enabled:
+        description: |-
+          Build configuration. When BuildEnabled is true, the site is built in an
+          in-cluster Kubernetes build pod (npm/pnpm) and the contents of
+          RootDirectory/OutputDir are synced instead of PublishPath.
+        type: boolean
+      build_env_vars:
+        additionalProperties:
+          type: string
+        type: object
+      cloud_account_id:
+        type: string
+      created_at:
+        type: string
+      custom_domain:
+        description: |-
+          Custom domain (optional). ACM cert is always us-east-1; DNS may use a
+          different cloud_account than CloudFront/S3.
+        type: string
+      description:
+        type: string
+      dns_account_id:
+        type: string
+      dns_zone_id:
+        type: string
+      git_branch:
+        type: string
+      git_provider_id:
+        type: string
+      git_repo:
+        description: Git source
+        type: string
+      id:
+        type: string
+      install_command:
+        description: empty = inferred default
+        type: string
+      manage_dns:
+        type: boolean
+      name:
+        type: string
+      node_version:
+        description: optional; default in code
+        type: string
+      output_dir:
+        description: build output folder, e.g. "dist"
+        type: string
+      package_manager:
+        description: auto | npm | pnpm
+        type: string
+      project_id:
+        type: string
+      provider:
+        allOf:
+        - $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.PageProvider'
+        description: Provider + cloud account
+      publish_path:
+        description: |-
+          PublishPath is the folder in the repo whose contents are synced to the
+          bucket root. Default "." = repo root. Used when BuildEnabled is false
+          (pre-built static files committed to the repo).
+        type: string
+      region:
+        type: string
+      root_directory:
+        description: monorepo subdir holding package.json
+        type: string
+      runtime:
+        allOf:
+        - $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.PageRuntime'
+        description: Runtime state (AWS resource IDs), persisted incrementally.
+      status:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.PageStatus'
+      updated_at:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_model.PageProvider:
+    enum:
+    - aws_cloudfront
+    - cloudflare_pages
+    type: string
+    x-enum-varnames:
+    - PageProviderAWSCloudFront
+    - PageProviderCloudflarePages
+  github_com_orkai-dev_orkai_apps_api_internal_model.PageRuntime:
+    properties:
+      alias_target:
+        description: CloudFront domain for final DNS alias
+        type: string
+      bucket_name:
+        type: string
+      cert_status:
+        description: PENDING_VALIDATION | ISSUED | ...
+        type: string
+      certificate_arn:
+        description: Custom domain + ACM (certificate always in us-east-1 for CloudFront).
+        type: string
+      cf_project_id:
+        type: string
+      cf_project_name:
+        description: Cloudflare Pages (provider cloudflare_pages).
+        type: string
+      default_url:
+        type: string
+      distribution_arn:
+        description: needed to (re)apply the bucket policy idempotently
+        type: string
+      distribution_id:
+        type: string
+      oac_id:
+        description: CloudFront Origin Access Control ID
+        type: string
+      validation_record:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.PageValidationRecord'
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_model.PageStatus:
+    enum:
+    - idle
+    - deploying
+    - live
+    - error
+    - draining
+    type: string
+    x-enum-comments:
+      PageStatusDraining: Phase 4 (delete)
+    x-enum-descriptions:
+    - ""
+    - ""
+    - ""
+    - ""
+    - Phase 4 (delete)
+    x-enum-varnames:
+    - PageStatusIdle
+    - PageStatusDeploying
+    - PageStatusLive
+    - PageStatusError
+    - PageStatusDraining
+  github_com_orkai-dev_orkai_apps_api_internal_model.PageValidationRecord:
+    properties:
+      name:
+        type: string
+      type:
+        type: string
+      value:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_model.PortMapping:
+    properties:
+      container_port:
+        type: integer
+      protocol:
+        description: tcp | udp
+        type: string
+      service_port:
+        type: integer
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_model.Project:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      env_vars:
+        additionalProperties:
+          type: string
+        description: Project environment (shared by all services)
+        type: object
+      environment:
+        allOf:
+        - $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.Environment'
+        description: Metadata
+      id:
+        type: string
+      name:
+        type: string
+      namespace:
+        type: string
+      network_policy_enabled:
+        type: boolean
+      org_id:
+        type: string
+      resource_quota:
+        allOf:
+        - $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.ResourceQuotaConfig'
+        description: Resource controls
+      service_account:
+        description: Service account
+        type: string
+      team:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.Team'
+      team_id:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_model.ResourceQuotaConfig:
+    properties:
+      cpu_limit:
+        description: e.g. "4000m"
+        type: string
+      mem_limit:
+        description: e.g. "8Gi"
+        type: string
+      pod_limit:
+        description: max pods
+        type: integer
+      pvc_limit:
+        description: max PVCs
+        type: integer
+      storage_limit:
+        description: e.g. "50Gi"
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_model.ResourceType:
+    enum:
+    - git_provider
+    - registry
+    - ssh_key
+    - object_storage
+    - cloud_account
+    type: string
+    x-enum-varnames:
+    - ResourceGitProvider
+    - ResourceRegistry
+    - ResourceSSHKey
+    - ResourceObjectStorage
+    - ResourceCloudAccount
+  github_com_orkai-dev_orkai_apps_api_internal_model.Role:
+    enum:
+    - admin
+    - member
+    type: string
+    x-enum-varnames:
+    - RoleAdmin
+    - RoleMember
+  github_com_orkai-dev_orkai_apps_api_internal_model.ServerNode:
+    properties:
+      auth_type:
+        description: password | ssh_key
+        type: string
+      created_at:
+        type: string
+      host:
+        type: string
+      id:
+        type: string
+      k8s_node_name:
+        type: string
+      name:
+        type: string
+      port:
+        type: integer
+      role:
+        description: worker | server
+        type: string
+      ssh_key_id:
+        type: string
+      ssh_user:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.NodeStatus'
+      status_msg:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_model.SharedResource:
+    properties:
+      config:
+        items:
+          type: integer
+        type: array
+      created_at:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      org_id:
+        type: string
+      provider:
+        description: github | gitlab | dockerhub | ghcr | custom
+        type: string
+      status:
+        type: string
+      type:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.ResourceType'
+      updated_at:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_model.SourceType:
+    enum:
+    - git
+    - image
+    type: string
+    x-enum-varnames:
+    - SourceGit
+    - SourceImage
+  github_com_orkai-dev_orkai_apps_api_internal_model.Team:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      org_id:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_model.Template:
+    properties:
+      category:
+        type: string
+      compose_yaml:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      env_schema:
+        additionalProperties:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.EnvVar'
+        type: object
+      id:
+        type: string
+      logo_url:
+        type: string
+      min_cpu:
+        type: string
+      min_memory:
+        type: string
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_model.User:
+    properties:
+      avatar_url:
+        type: string
+      created_at:
+        type: string
+      display_name:
+        type: string
+      email:
+        description: uniqueness enforced via partial index idx_users_email_active
+          (active rows only)
+        type: string
+      first_name:
+        type: string
+      id:
+        type: string
+      is_super_admin:
+        type: boolean
+      last_name:
+        type: string
+      org_id:
+        type: string
+      role:
+        $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_model.Role'
+      two_fa_enabled:
+        type: boolean
+      updated_at:
+        type: string
+    type: object
+  github_com_orkai-dev_orkai_apps_api_internal_model.VolumeMount:
+    properties:
+      mount_path:
+        type: string
+      name:
+        type: string
+      pvc_name:
+        description: filled after PVC creation
+        type: string
+      size:
+        description: e.g. "1Gi"
+        type: string
+      storage_class:
+        description: optional override; empty uses target default
+        type: string
+    type: object
+  v1.oauth2FAInput:
+    properties:
+      challenge:
+        type: string
+      code:
+        type: string
+    required:
+    - challenge
+    - code
+    type: object
+info:
+  contact: {}
+  description: REST control plane for orka'i self-hosted PaaS
+  title: Orkai API
+  version: "1.0"
+paths:
+  /api-keys:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.APIKey'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List API keys
+      tags:
+      - api-keys
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Create API key
+      tags:
+      - api-keys
+  /api-keys/{id}:
+    delete:
+      parameters:
+      - description: API key ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Revoke API key
+      tags:
+      - api-keys
+  /apps:
+    get:
+      parameters:
+      - description: Search term
+        in: query
+        name: search
+        type: string
+      - description: Status filter
+        in: query
+        name: status
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (max 100)
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ApplicationListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List all applications
+      tags:
+      - apps
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.CreateAppInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.Application'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Create application
+      tags:
+      - apps
+  /apps/{id}:
+    delete:
+      parameters:
+      - description: Application ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Delete application
+      tags:
+      - apps
+    get:
+      parameters:
+      - description: Application ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.Application'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Get application
+      tags:
+      - apps
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Application ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.UpdateAppInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.Application'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Update application
+      tags:
+      - apps
+  /apps/{id}/capabilities:
+    get:
+      parameters:
+      - description: Application ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Get application target capabilities
+      tags:
+      - apps
+  /apps/{id}/clear-cache:
+    post:
+      parameters:
+      - description: Application ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Clear application build cache
+      tags:
+      - apps
+  /apps/{id}/deploy:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Application ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.Deployment'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Trigger deployment
+      tags:
+      - deployments
+  /apps/{id}/deployments:
+    get:
+      parameters:
+      - description: Application ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (max 100)
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.DeploymentListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List application deployments
+      tags:
+      - deployments
+  /apps/{id}/domains:
+    get:
+      parameters:
+      - description: Application ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.Domain'
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List application domains
+      tags:
+      - domains
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Application ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.CreateDomainInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.Domain'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Create domain
+      tags:
+      - domains
+  /apps/{id}/domains/generate:
+    post:
+      parameters:
+      - description: Application ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.Domain'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Generate Traefik domain
+      tags:
+      - domains
+  /apps/{id}/env:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Application ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.Application'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Update application environment variables
+      tags:
+      - apps
+  /apps/{id}/metrics:
+    get:
+      parameters:
+      - description: Application ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Get application metrics
+      tags:
+      - apps
+  /apps/{id}/pods:
+    get:
+      parameters:
+      - description: Application ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List application pods
+      tags:
+      - apps
+  /apps/{id}/pods/{podName}/events:
+    get:
+      parameters:
+      - description: Application ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Pod name
+        in: path
+        name: podName
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List pod events
+      tags:
+      - apps
+  /apps/{id}/restart:
+    post:
+      parameters:
+      - description: Application ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Restart application
+      tags:
+      - apps
+  /apps/{id}/scale:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Application ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.Application'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Scale application
+      tags:
+      - apps
+  /apps/{id}/secrets:
+    get:
+      parameters:
+      - description: Application ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List application secret keys
+      tags:
+      - apps
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Application ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Update application secrets
+      tags:
+      - apps
+  /apps/{id}/status:
+    get:
+      parameters:
+      - description: Application ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Get application status
+      tags:
+      - apps
+  /apps/{id}/stop:
+    post:
+      parameters:
+      - description: Application ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Stop application
+      tags:
+      - apps
+  /apps/{id}/webhook:
+    get:
+      parameters:
+      - description: Application ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Get webhook configuration
+      tags:
+      - apps
+  /apps/{id}/webhook/disable:
+    post:
+      parameters:
+      - description: Application ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Disable auto-deploy webhook
+      tags:
+      - apps
+  /apps/{id}/webhook/enable:
+    post:
+      parameters:
+      - description: Application ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Enable auto-deploy webhook
+      tags:
+      - apps
+  /apps/{id}/webhook/regenerate:
+    post:
+      parameters:
+      - description: Application ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Regenerate webhook secret
+      tags:
+      - apps
+  /auth/2fa/disable:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.Verify2FAInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Disable 2FA
+      tags:
+      - auth
+  /auth/2fa/setup:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Begin 2FA setup
+      tags:
+      - auth
+  /auth/2fa/verify:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.Verify2FAInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Verify and enable 2FA
+      tags:
+      - auth
+  /auth/avatars:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: string
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List avatar options
+      tags:
+      - auth
+  /auth/change-password:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ChangePasswordInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Change password
+      tags:
+      - auth
+  /auth/github/callback:
+    get:
+      parameters:
+      - description: Authorization code
+        in: query
+        name: code
+        type: string
+      - description: CSRF state
+        in: query
+        name: state
+        type: string
+      responses:
+        "302":
+          description: Found
+      summary: GitHub OAuth callback
+      tags:
+      - oauth
+  /auth/github/connect:
+    get:
+      parameters:
+      - description: Account type
+        in: query
+        name: type
+        type: string
+      - description: GitHub organization
+        in: query
+        name: org
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Start GitHub OAuth connect flow
+      tags:
+      - oauth
+  /auth/github/setup:
+    get:
+      parameters:
+      - description: GitHub organization
+        in: query
+        name: org
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Get GitHub App setup manifest
+      tags:
+      - oauth
+  /auth/github/setup/callback:
+    get:
+      parameters:
+      - description: Setup code
+        in: query
+        name: code
+        type: string
+      - description: CSRF state
+        in: query
+        name: state
+        type: string
+      responses:
+        "302":
+          description: Found
+      summary: GitHub App setup callback
+      tags:
+      - oauth
+  /auth/github/status:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Get GitHub App status
+      tags:
+      - oauth
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Login credentials
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.LoginInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.AuthResult'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      summary: Login
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Logout
+      tags:
+      - auth
+  /auth/me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.User'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Get current user
+      tags:
+      - auth
+  /auth/oauth/{provider}/callback:
+    get:
+      parameters:
+      - description: OAuth provider name
+        in: path
+        name: provider
+        required: true
+        type: string
+      - description: Authorization code
+        in: query
+        name: code
+        type: string
+      - description: CSRF state
+        in: query
+        name: state
+        type: string
+      responses:
+        "302":
+          description: Found
+      summary: OAuth login callback
+      tags:
+      - oauth
+  /auth/oauth/{provider}/login:
+    get:
+      parameters:
+      - description: OAuth provider name
+        in: path
+        name: provider
+        required: true
+        type: string
+      responses:
+        "302":
+          description: Found
+      summary: Start OAuth login flow
+      tags:
+      - oauth
+  /auth/oauth/2fa:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/v1.oauth2FAInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.AuthResult'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      summary: Complete OAuth login with 2FA
+      tags:
+      - oauth
+  /auth/profile:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.UpdateProfileInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Update profile
+      tags:
+      - auth
+  /auth/providers:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      summary: List OAuth login providers
+      tags:
+      - oauth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Refresh token
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.RefreshInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.AuthResult'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      summary: Refresh access token
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Registration payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.RegisterInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.AuthResult'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      summary: Register first admin user
+      tags:
+      - auth
+  /auth/setup-status:
+    get:
+      description: Returns whether the system has been initialized.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.SetupStatus'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      summary: Get setup status
+      tags:
+      - auth
+  /cluster/capabilities:
+    get:
+      description: Requires admin role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Get cluster capabilities
+      tags:
+      - cluster
+  /cluster/cleanup/completed-jobs:
+    post:
+      description: Requires admin role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Cleanup completed jobs
+      tags:
+      - cluster
+  /cluster/cleanup/completed-pods:
+    post:
+      description: Requires admin role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Cleanup completed pods
+      tags:
+      - cluster
+  /cluster/cleanup/evicted-pods:
+    post:
+      description: Requires admin role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Cleanup evicted pods
+      tags:
+      - cluster
+  /cluster/cleanup/failed-pods:
+    post:
+      description: Requires admin role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Cleanup failed pods
+      tags:
+      - cluster
+  /cluster/cleanup/orphan-ingresses:
+    post:
+      description: Requires admin role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Cleanup orphan ingresses
+      tags:
+      - cluster
+  /cluster/cleanup/stale-replicasets:
+    post:
+      description: Requires admin role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Cleanup stale ReplicaSets
+      tags:
+      - cluster
+  /cluster/cleanup/stats:
+    get:
+      description: Requires admin role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Get cluster cleanup stats
+      tags:
+      - cluster
+  /cluster/daemonsets:
+    get:
+      description: Requires admin role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List DaemonSets
+      tags:
+      - cluster
+  /cluster/events:
+    get:
+      description: Requires admin role.
+      parameters:
+      - description: Max events (default 100)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List cluster events
+      tags:
+      - cluster
+  /cluster/helm-releases:
+    get:
+      description: Requires admin role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List Helm releases
+      tags:
+      - cluster
+  /cluster/metrics:
+    get:
+      description: Requires admin role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Get cluster metrics
+      tags:
+      - cluster
+  /cluster/namespaces:
+    get:
+      description: Requires admin role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List namespaces
+      tags:
+      - cluster
+  /cluster/node-metrics:
+    get:
+      description: Requires admin role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Get node metrics
+      tags:
+      - cluster
+  /cluster/node-pools:
+    get:
+      description: Requires admin role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List node pools
+      tags:
+      - cluster
+  /cluster/nodes:
+    get:
+      description: Requires admin role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List cluster nodes
+      tags:
+      - cluster
+  /cluster/nodes/{name}/pool:
+    put:
+      consumes:
+      - application/json
+      description: Requires admin role.
+      parameters:
+      - description: Node name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.MessageResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Set node pool label
+      tags:
+      - cluster
+  /cluster/pods:
+    get:
+      description: Requires admin role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List all cluster pods
+      tags:
+      - cluster
+  /cluster/pvcs:
+    get:
+      description: Requires admin role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List persistent volume claims
+      tags:
+      - cluster
+  /cluster/pvcs/{namespace}/{name}:
+    delete:
+      description: Requires admin role.
+      parameters:
+      - description: Namespace
+        in: path
+        name: namespace
+        required: true
+        type: string
+      - description: PVC name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.MessageResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Delete PVC
+      tags:
+      - cluster
+  /cluster/pvcs/{namespace}/{name}/expand:
+    put:
+      consumes:
+      - application/json
+      description: Requires admin role.
+      parameters:
+      - description: Namespace
+        in: path
+        name: namespace
+        required: true
+        type: string
+      - description: PVC name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.MessageResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Expand PVC
+      tags:
+      - cluster
+  /cluster/storage-classes:
+    get:
+      description: Requires admin role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List storage classes
+      tags:
+      - cluster
+  /cluster/topology:
+    get:
+      description: Requires admin role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Get cluster topology
+      tags:
+      - cluster
+  /cluster/traefik-config:
+    get:
+      description: Requires admin role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Get Traefik configuration
+      tags:
+      - cluster
+    put:
+      consumes:
+      - application/json
+      description: Requires admin role.
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.MessageResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Update Traefik configuration
+      tags:
+      - cluster
+  /cluster/traefik-restart:
+    post:
+      description: Requires admin role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.MessageResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Restart Traefik
+      tags:
+      - cluster
+  /cluster/traefik-status:
+    get:
+      description: Requires admin role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Get Traefik status
+      tags:
+      - cluster
+  /cronjobs:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.CreateCronJobInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.CronJob'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Create cron job
+      tags:
+      - cronjobs
+  /cronjobs/{id}:
+    delete:
+      parameters:
+      - description: Cron job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Delete cron job
+      tags:
+      - cronjobs
+    get:
+      parameters:
+      - description: Cron job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.CronJob'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Get cron job
+      tags:
+      - cronjobs
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Cron job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.UpdateCronJobInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.CronJob'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Update cron job
+      tags:
+      - cronjobs
+  /cronjobs/{id}/runs:
+    get:
+      parameters:
+      - description: Cron job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (max 100)
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List cron job runs
+      tags:
+      - cronjobs
+  /cronjobs/{id}/trigger:
+    post:
+      parameters:
+      - description: Cron job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Trigger cron job run
+      tags:
+      - cronjobs
+  /databases:
+    get:
+      parameters:
+      - description: Search term
+        in: query
+        name: search
+        type: string
+      - description: Status filter
+        in: query
+        name: status
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (max 100)
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.DatabaseListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List all databases
+      tags:
+      - databases
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.CreateDatabaseInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ManagedDatabase'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Create database
+      tags:
+      - databases
+  /databases/{id}:
+    delete:
+      parameters:
+      - description: Database ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Delete database
+      tags:
+      - databases
+    get:
+      parameters:
+      - description: Database ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ManagedDatabase'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Get database
+      tags:
+      - databases
+  /databases/{id}/backup-config:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Database ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.UpdateBackupInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ManagedDatabase'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Update database backup configuration
+      tags:
+      - databases
+  /databases/{id}/backups:
+    get:
+      parameters:
+      - description: Database ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (max 100)
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List database backups
+      tags:
+      - databases
+    post:
+      parameters:
+      - description: Database ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Trigger database backup
+      tags:
+      - databases
+  /databases/{id}/backups/{backupId}/restore:
+    post:
+      parameters:
+      - description: Database ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Backup ID
+        in: path
+        name: backupId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Restore database from backup
+      tags:
+      - databases
+  /databases/{id}/credentials:
+    get:
+      parameters:
+      - description: Database ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Get database credentials
+      tags:
+      - databases
+  /databases/{id}/external-access:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Database ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ManagedDatabase'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Update database external access
+      tags:
+      - databases
+  /databases/{id}/pods:
+    get:
+      parameters:
+      - description: Database ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List database pods
+      tags:
+      - databases
+  /databases/{id}/status:
+    get:
+      parameters:
+      - description: Database ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Get database status
+      tags:
+      - databases
+  /databases/used-ports:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List used external database ports
+      tags:
+      - databases
+  /databases/versions:
+    get:
+      parameters:
+      - description: Database engine
+        in: query
+        name: engine
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List supported database versions
+      tags:
+      - databases
+  /deployments:
+    get:
+      parameters:
+      - description: Status filter
+        in: query
+        name: status
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (max 100)
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.DeploymentListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List all deployments
+      tags:
+      - deployments
+  /deployments/{id}:
+    get:
+      parameters:
+      - description: Deployment ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.Deployment'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Get deployment
+      tags:
+      - deployments
+  /deployments/{id}/cancel:
+    post:
+      parameters:
+      - description: Deployment ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.MessageResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Cancel deployment
+      tags:
+      - deployments
+  /deployments/{id}/rollback:
+    post:
+      parameters:
+      - description: Deployment ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.Deployment'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Rollback deployment
+      tags:
+      - deployments
+  /deployments/queue:
+    get:
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (max 100)
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.DeploymentListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List deployment queue
+      tags:
+      - deployments
+  /domains/{id}:
+    delete:
+      parameters:
+      - description: Domain ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Delete domain
+      tags:
+      - domains
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Domain ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.Domain'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Update domain
+      tags:
+      - domains
+  /monitoring/alerts:
+    get:
+      parameters:
+      - description: Active only
+        in: query
+        name: active
+        type: boolean
+      - description: Severity filter
+        in: query
+        name: severity
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (max 100)
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List alerts
+      tags:
+      - monitoring
+  /monitoring/alerts/{id}/resolve:
+    post:
+      parameters:
+      - description: Alert ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Resolve alert
+      tags:
+      - monitoring
+  /monitoring/alerts/active:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Get active alerts
+      tags:
+      - monitoring
+  /monitoring/events:
+    get:
+      parameters:
+      - description: Event type
+        in: query
+        name: event_type
+        type: string
+      - description: Namespace
+        in: query
+        name: namespace
+        type: string
+      - description: Start time (RFC3339)
+        in: query
+        name: from
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (max 100)
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List monitoring events
+      tags:
+      - monitoring
+  /monitoring/snapshots:
+    get:
+      parameters:
+      - description: Source type
+        in: query
+        name: source_type
+        type: string
+      - description: Source name
+        in: query
+        name: source_name
+        type: string
+      - description: Start time (RFC3339)
+        in: query
+        name: from
+        type: string
+      - description: End time (RFC3339)
+        in: query
+        name: to
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Get metric snapshots
+      tags:
+      - monitoring
+  /nodes:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.NodeListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List server nodes
+      tags:
+      - nodes
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Node configuration
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.CreateNodeInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ServerNode'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Create server node
+      tags:
+      - nodes
+  /nodes/{id}:
+    delete:
+      parameters:
+      - description: Node ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Delete server node
+      tags:
+      - nodes
+  /nodes/{id}/initialize:
+    post:
+      parameters:
+      - description: Node ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Initialize server node
+      tags:
+      - nodes
+  /notifications/channels:
+    get:
+      description: Requires admin role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List notification channels
+      tags:
+      - notifications
+    put:
+      consumes:
+      - application/json
+      description: Requires admin role.
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Save notification channel
+      tags:
+      - notifications
+  /notifications/events:
+    get:
+      description: Requires admin role. Returns all event types with labels and categories
+        for the settings UI.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List notification event types
+      tags:
+      - notifications
+  /notifications/test:
+    post:
+      consumes:
+      - application/json
+      description: Requires admin role.
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Test notification channel
+      tags:
+      - notifications
+  /pages:
+    get:
+      parameters:
+      - description: Search term
+        in: query
+        name: search
+        type: string
+      - description: Status filter
+        in: query
+        name: status
+        type: string
+      - description: Provider filter (aws_cloudfront, cloudflare_pages)
+        in: query
+        name: provider
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (max 100)
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.PageListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List all pages
+      tags:
+      - pages
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.CreatePageInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.Page'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Create page
+      tags:
+      - pages
+  /pages/{id}:
+    delete:
+      parameters:
+      - description: Page ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Delete page
+      tags:
+      - pages
+    get:
+      parameters:
+      - description: Page ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.Page'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Get page
+      tags:
+      - pages
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Page ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.UpdatePageInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.Page'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Update page
+      tags:
+      - pages
+  /pages/{id}/deploy:
+    post:
+      parameters:
+      - description: Page ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Deploy page
+      tags:
+      - pages
+  /pages/{id}/deployments:
+    get:
+      parameters:
+      - description: Page ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (max 100)
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List page deployments
+      tags:
+      - pages
+  /pages/{id}/deployments/{deployId}:
+    get:
+      parameters:
+      - description: Page ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Deployment ID
+        in: path
+        name: deployId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Get page deployment
+      tags:
+      - pages
+  /projects:
+    get:
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (max 100)
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProjectListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List projects
+      tags:
+      - projects
+    post:
+      consumes:
+      - application/json
+      description: Requires admin role.
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.CreateProjectInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.Project'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Create project
+      tags:
+      - projects
+  /projects/{id}:
+    delete:
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Delete project
+      tags:
+      - projects
+    get:
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.Project'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Get project
+      tags:
+      - projects
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.UpdateProjectInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.Project'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Update project
+      tags:
+      - projects
+  /projects/{id}/apps:
+    get:
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (max 100)
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ApplicationListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List applications in project
+      tags:
+      - apps
+  /projects/{id}/cronjobs:
+    get:
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (max 100)
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.CronJobListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List cron jobs in project
+      tags:
+      - cronjobs
+  /projects/{id}/databases:
+    get:
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (max 100)
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.DatabaseListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List databases in project
+      tags:
+      - databases
+  /projects/{id}/env:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.Project'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Update project environment variables
+      tags:
+      - projects
+  /projects/{id}/pages:
+    get:
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (max 100)
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.PageListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List pages in project
+      tags:
+      - pages
+  /resources:
+    get:
+      description: Requires admin role.
+      parameters:
+      - description: Resource type filter
+        in: query
+        name: type
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ResourceListResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List shared resources
+      tags:
+      - resources
+    post:
+      consumes:
+      - application/json
+      description: Requires admin role.
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.CreateResourceInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.SharedResource'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Create shared resource
+      tags:
+      - resources
+  /resources/{id}:
+    delete:
+      description: Requires admin role.
+      parameters:
+      - description: Resource ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Delete shared resource
+      tags:
+      - resources
+    patch:
+      consumes:
+      - application/json
+      description: Requires admin role.
+      parameters:
+      - description: Resource ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.UpdateResourceInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.SharedResource'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Update shared resource
+      tags:
+      - resources
+  /resources/{id}/buckets:
+    get:
+      description: Requires admin role.
+      parameters:
+      - description: Resource ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: string
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List S3 buckets
+      tags:
+      - resources
+  /resources/{id}/dns/records:
+    get:
+      description: Requires admin role.
+      parameters:
+      - description: Resource ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Zone ID
+        in: query
+        name: zone_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List DNS records
+      tags:
+      - dns
+    post:
+      consumes:
+      - application/json
+      description: Requires admin role.
+      parameters:
+      - description: Resource ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.DNSUpsertRecordInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Upsert DNS record
+      tags:
+      - dns
+  /resources/{id}/dns/records/delete:
+    post:
+      consumes:
+      - application/json
+      description: Requires admin role.
+      parameters:
+      - description: Resource ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.DNSDeleteRecordInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Delete DNS record
+      tags:
+      - dns
+  /resources/{id}/dns/zones:
+    get:
+      description: Requires admin role.
+      parameters:
+      - description: Resource ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List DNS zones
+      tags:
+      - dns
+  /resources/{id}/repos:
+    get:
+      description: Requires admin role.
+      parameters:
+      - description: Resource ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List Git repositories
+      tags:
+      - resources
+  /resources/{id}/test:
+    post:
+      description: Requires admin role.
+      parameters:
+      - description: Resource ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Test resource connection
+      tags:
+      - resources
+  /resources/generate-ssh-key:
+    post:
+      consumes:
+      - application/json
+      description: Requires admin role.
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.SharedResource'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Generate SSH key resource
+      tags:
+      - resources
+  /settings:
+    get:
+      description: Requires admin role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Get all settings
+      tags:
+      - settings
+    put:
+      consumes:
+      - application/json
+      description: Requires admin role.
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Update setting
+      tags:
+      - settings
+  /settings/smtp:
+    get:
+      description: Requires admin role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.SMTPConfig'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Get SMTP configuration
+      tags:
+      - notifications
+    put:
+      consumes:
+      - application/json
+      description: Requires admin role.
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.SMTPConfig'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Save SMTP configuration
+      tags:
+      - notifications
+  /settings/smtp/test:
+    post:
+      description: Requires admin role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Test SMTP configuration
+      tags:
+      - notifications
+  /settings/verify-domain:
+    get:
+      description: Requires admin role.
+      parameters:
+      - description: Domain to verify
+        in: query
+        name: domain
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Verify domain DNS and certificate
+      tags:
+      - settings
+  /system/backup/config:
+    get:
+      description: Requires admin role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.SystemBackupConfig'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Get system backup configuration
+      tags:
+      - system
+    put:
+      consumes:
+      - application/json
+      description: Requires admin role.
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.SystemBackupConfig'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Save system backup configuration
+      tags:
+      - system
+  /system/backup/list:
+    get:
+      description: Requires admin role.
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (max 100)
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List system backups
+      tags:
+      - system
+  /system/backup/trigger:
+    post:
+      description: Requires admin role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Trigger system backup
+      tags:
+      - system
+  /system/restore/execute:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Restore system from S3 backup
+      tags:
+      - system
+  /system/restore/scan:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      summary: Scan S3 backups for restore
+      tags:
+      - system
+  /team/invitations:
+    get:
+      description: Requires admin role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List pending invitations
+      tags:
+      - team
+    post:
+      consumes:
+      - application/json
+      description: Requires admin role.
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Invite organization member
+      tags:
+      - team
+  /team/invitations/{id}:
+    delete:
+      description: Requires admin role.
+      parameters:
+      - description: Invitation ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Cancel invitation
+      tags:
+      - team
+  /team/invitations/accept:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Accept team invitation
+      tags:
+      - team
+  /team/invitations/accept-public:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.AuthResult'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      summary: Accept invitation with registration
+      tags:
+      - team
+  /team/invitations/info:
+    get:
+      parameters:
+      - description: Invitation token
+        in: query
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      summary: Get invitation info by token
+      tags:
+      - team
+  /team/members:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List organization members
+      tags:
+      - team
+  /team/members/{id}:
+    delete:
+      description: Requires admin role.
+      parameters:
+      - description: Member user ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Remove organization member
+      tags:
+      - team
+  /team/members/{id}/role:
+    patch:
+      consumes:
+      - application/json
+      description: Requires admin role.
+      parameters:
+      - description: Member user ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.MessageResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Update member role
+      tags:
+      - team
+  /teams:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List teams
+      tags:
+      - team
+    post:
+      consumes:
+      - application/json
+      description: Requires admin role.
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Create team
+      tags:
+      - team
+  /teams/{id}:
+    delete:
+      description: Requires admin role.
+      parameters:
+      - description: Team ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Delete team
+      tags:
+      - team
+  /teams/{id}/members:
+    get:
+      description: Requires admin role.
+      parameters:
+      - description: Team ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List team members
+      tags:
+      - team
+    post:
+      consumes:
+      - application/json
+      description: Requires admin role.
+      parameters:
+      - description: Team ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.MessageResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Add team member
+      tags:
+      - team
+  /teams/{id}/members/{userId}:
+    delete:
+      description: Requires admin role.
+      parameters:
+      - description: Team ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Remove team member
+      tags:
+      - team
+  /templates:
+    get:
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (max 100)
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.TemplateListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: List templates
+      tags:
+      - templates
+  /templates/{id}:
+    get:
+      parameters:
+      - description: Template ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.Template'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      security:
+      - BearerAuth: []
+      summary: Get template
+      tags:
+      - templates
+  /webhooks/github/{appId}:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Application ID
+        in: path
+        name: appId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      summary: GitHub push webhook
+      tags:
+      - webhooks
+  /webhooks/gitlab/{appId}:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Application ID
+        in: path
+        name: appId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_orkai-dev_orkai_apps_api_internal_apidocs.ProblemDetail'
+      summary: GitLab push webhook
+      tags:
+      - webhooks
+securityDefinitions:
+  BearerAuth:
+    description: JWT access token or API key (ork_…)
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

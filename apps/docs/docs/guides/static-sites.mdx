@@ -1,0 +1,212 @@
+---
+sidebar_position: 3
+title: Static Sites (Pages)
+description: Deploy static sites from git to your own S3 bucket and CloudFront distribution — no Kubernetes workload, no in-platform build step.
+keywords: [orkai, pages, static site, S3, CloudFront, CDN, git, tags, AWS tagging]
+---
+
+# Static Sites (Pages)
+
+Pages let you publish a static website from a git repository to **your own AWS account**. orka'i clones the repo, syncs a publish folder to a private S3 bucket, and serves it through a CloudFront distribution. There is no Kubernetes Deployment and **no build step inside orka'i** in the current release — the publish folder must already contain ready-to-serve files (HTML, CSS, JS, assets).
+
+## How it works
+
+```text
+git repo  →  clone branch  →  publish folder  →  S3 bucket  →  CloudFront  →  live URL
+```
+
+On the first deploy, orka'i lazily provisions:
+
+1. A **private S3 bucket** (public access blocked) in the region you choose
+2. An **Origin Access Control (OAC)** so only CloudFront can read the bucket
+3. A **CloudFront distribution** with HTTPS and compression
+
+The control plane waits until CloudFront finishes deploying before marking the page live. Later deploys mirror changed files, delete removed objects, and invalidate the CDN cache.
+
+## Prerequisites
+
+Before creating a Page, configure shared resources under **Admin → Resources**:
+
+| Resource | Required | Purpose |
+|----------|----------|---------|
+| **Git provider** (GitHub, GitLab, Gitea) | Yes, to pick a repo from the UI | Authenticates clone for private repositories |
+| **Cloud account** (AWS) | Required before first deploy | Credentials used to create S3 + CloudFront in your account |
+
+For AWS cloud accounts you can choose one of three authentication modes:
+
+| Auth mode | How credentials are resolved |
+|-----------|------------------------------|
+| **Access Key** | Static access key ID + secret access key you enter. |
+| **Instance Role / Env (EC2)** | The AWS default credential chain — environment variables or the EC2 instance's attached IAM role. No keys to enter. |
+| **Assume Role (STS)** | orka'i assumes a specified **Role ARN** via STS. The base credentials used to make the `AssumeRole` call are the static access keys (if provided) or otherwise the instance role / environment. Use this on EC2 to assume an IAM role **different from the instance profile**, including cross-account roles (set an optional **External ID**). |
+
+The cloud account's default region is separate from the Page region field.
+
+You can also define **resource tags** on the cloud account (see below). Tags are applied to AWS resources orka'i creates when a Page deploys.
+
+## Cloud account resource tags
+
+When you add or edit an AWS cloud account under **Admin → Resources → Cloud Accounts**, the **Resource Tags** section lets you define key/value pairs that orka'i applies to infrastructure it provisions for Pages.
+
+Tags are resolved **per Page deploy** using context from the Page's project:
+
+| Placeholder | Resolves to |
+|-------------|-------------|
+| `{{env}}` | Project environment (`prod`, `testing`, `sandbox`, `qa`, `poc`, `development`) |
+| `{{team}}` | Team name the project belongs to |
+| `{{project}}` | Project name |
+| `{{page}}` | Page name |
+
+Placeholders can appear anywhere in a tag value — they are not limited to the whole value. For example, `env-{{env}}` becomes `env-prod` when the project environment is `prod`.
+
+### Examples
+
+| Key | Value | Result (example) |
+|-----|-------|------------------|
+| `Environment` | `{{env}}` | `prod` |
+| `Owner` | `{{team}}` | `platform` |
+| `Project` | `{{project}}` | `my-app` |
+| `Page` | `{{page}}` | `landing` |
+| `ManagedBy` | `orka'i` | `orka'i` (static — no placeholders) |
+
+Static tags (no `{{…}}` placeholders) always apply. Tags that use placeholders are **skipped entirely** if any placeholder in the value cannot be resolved — for example, when `{{team}}` is used but the team name is empty, or when an unknown placeholder like `{{org}}` is used. Empty tag keys are ignored.
+
+### Where tags are applied
+
+On each Page's **first deploy**, resolved tags are applied to:
+
+- The **S3 bucket** (via bucket tagging)
+- The **CloudFront distribution** (at creation time)
+- The **ACM certificate** (when a custom domain is configured)
+
+Tags are **not** applied to Route53 records (AWS does not support record tagging) or Origin Access Control resources. Changing tags on the cloud account does not retroactively update resources that were already provisioned; new tags take effect on the next provisioned resource (typically a new Page).
+
+Tags configured on a cloud account apply to **every Page** that uses that account — you do not set tags per Page in the Page form.
+
+## Create a Page
+
+Open a project (`/projects/{id}`), click **New Service**, choose **Page**, and fill in the form.
+
+### Name
+
+A short identifier for the Page within the project. Must start with a letter or digit and contain only letters, digits, hyphens, and underscores (max 63 characters). Used when generating the S3 bucket name. Cannot be changed after creation.
+
+### Git Provider and Repository
+
+Select a connected **Git provider**, then search and pick a **repository** from the dropdown (same picker as Application deploys). orka'i stores the repository clone URL and provider ID for authenticated clones.
+
+If no Git providers are configured, you can paste a public repository URL instead. Connect a provider under **Admin → Resources** for private repos and searchable selection.
+
+### Branch
+
+The git branch to clone on each deploy. Defaults to `main` when the selected repository's default branch is unavailable. orka'i performs a shallow single-branch clone (`--depth 1`).
+
+### Publish Folder
+
+The subdirectory inside the repository whose **contents** are synced to the S3 bucket root. Examples:
+
+| Value | Meaning |
+|-------|---------|
+| `.` | Repository root (default) |
+| `dist` | Vite/Webpack output folder |
+| `docs` | Documentation build output |
+| `public` | Pre-built static assets |
+
+Files outside this folder are never uploaded. The `.git` directory is always excluded, even when publishing from the repo root. orka'i does not run `npm build`, `hugo`, or similar — commit built artifacts to the branch or build in CI before pushing.
+
+### AWS Account
+
+The cloud account resource whose credentials provision and manage S3 and CloudFront. Required before the first deploy. **Locked after the first successful deploy** — changing accounts would orphan existing infrastructure.
+
+### Region
+
+The AWS region for the **S3 bucket** (e.g. `us-east-1`, `eu-west-1`). CloudFront's control plane always uses `us-east-1`; that is handled automatically. **Locked after the bucket is provisioned** on first deploy.
+
+### Custom Domain (optional)
+
+Serve the Page on your own domain (e.g. `app.example.com` or apex `example.com`) instead of the default `d….cloudfront.net` URL.
+
+| Field | Meaning |
+|-------|---------|
+| **Custom Domain** | The hostname visitors use. When **Manage DNS** is on, orka'i rejects a domain that already has a record in the selected Route53 zone. Domains already pointing elsewhere are allowed — migrate by cutting over DNS after provisioning. |
+| **Manage DNS automatically** | When enabled, orka'i creates Route53 records for ACM validation and the final CloudFront alias |
+| **DNS AWS Account** | The cloud account used for Route53 — **can differ** from the CloudFront/S3 account |
+| **Hosted Zone** | The Route53 zone where validation and alias records are created |
+
+Custom domain settings are **locked after the ACM certificate is requested** on first deploy.
+
+#### Manual DNS flow
+
+If you leave **Manage DNS** off:
+
+1. Deploy once — orka'i requests an ACM certificate (always in **us-east-1**) and shows the **validation CNAME** in the deploy log and Settings tab.
+2. Add that CNAME at your DNS provider.
+3. Re-deploy — orka'i waits up to **10 minutes** for the certificate to reach `ISSUED`, then creates CloudFront with your domain and the cert.
+4. Add the **CloudFront alias** record shown in the log (Route53 ALIAS A/AAAA to `d….cloudfront.net`, zone `Z2FDTNDATAQYW2`).
+
+#### Automatic Route53 flow
+
+When **Manage DNS** is on, orka'i creates the validation CNAME, waits for the certificate, provisions CloudFront with the alias + ACM cert, and creates Route53 ALIAS A/AAAA records pointing your domain at CloudFront.
+
+## Deploy
+
+After creating a Page, open its detail view and click **Deploy** (or deploy from the project list). Each deploy:
+
+1. Clones the repository at the configured branch
+2. Resolves the publish folder at the cloned commit
+3. Provisions S3 + CloudFront on first deploy (may take **10–15 minutes** while CloudFront deploys)
+4. Uploads all files under the publish folder to the bucket
+5. Removes S3 objects that no longer exist locally
+6. Creates a CloudFront cache invalidation for `/*`
+
+If the commit SHA and publish folder are unchanged since the last successful deploy, the sync is skipped.
+
+### Status values
+
+| Status | Meaning |
+|--------|---------|
+| `idle` | Created, never deployed or last deploy finished |
+| `deploying` | A deploy job is running |
+| `live` | Last deploy succeeded; CDN URL is available |
+| `error` | Last deploy failed — check deployment logs |
+| `draining` | Reserved for future delete/teardown flows |
+
+The live URL appears in the Page detail view once provisioning completes. With a custom domain, the live link uses `https://your-domain`; otherwise it uses the CloudFront domain (`https://d….cloudfront.net`).
+
+## IAM permissions
+
+The **CloudFront/S3 cloud account** needs at minimum:
+
+- `s3:CreateBucket`, `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject`, `s3:ListBucket`, `s3:PutBucketPolicy`, `s3:PutPublicAccessBlock`
+- `cloudfront:CreateDistribution`, `cloudfront:GetDistribution`, `cloudfront:CreateInvalidation`, `cloudfront:CreateOriginAccessControl`
+- `acm:RequestCertificate`, `acm:DescribeCertificate`, `acm:ListCertificates` (certificates are always in **us-east-1**)
+- `sts:GetCallerIdentity` (connection test)
+
+When the cloud account uses **Assume Role (STS)** mode, the base principal (the entered access keys, or the EC2 instance role) additionally needs `sts:AssumeRole` permission on the target **Role ARN**, and the target role's trust policy must allow that principal to assume it. All of the permissions above must then be granted to the **assumed role**.
+
+If you configure **resource tags** on the cloud account, the IAM principal also needs:
+
+- `s3:PutBucketTagging`
+- `cloudfront:TagResource` (used when creating a distribution with tags)
+- `acm:AddTagsToCertificate`
+
+When **Manage DNS** is enabled, the **DNS cloud account** also needs:
+
+- `route53:ListHostedZones`, `route53:ListResourceRecordSets`, `route53:ChangeResourceRecordSets`
+
+## Edit settings
+
+On the Page detail page you can update the git repository URL, branch, publish folder, description, AWS account (until first deploy), and region (until the bucket exists). The provider is always `aws_cloudfront` and cannot be changed.
+
+## Tips
+
+- **Build in CI**: Push built static files to your branch (e.g. GitHub Actions runs `npm run build` and commits `dist/`).
+- **First deploy patience**: CloudFront distribution creation is slow on AWS's side; the deploy log shows progress until the distribution is fully deployed.
+- **Cost**: S3 storage and CloudFront data transfer bill to your AWS account, not the orka'i cluster.
+- **Cross-account DNS**: Route53 can live in a different AWS account than CloudFront — select the DNS account separately when enabling automatic DNS.
+- **Cost allocation tags**: Use cloud account resource tags with `{{env}}`, `{{team}}`, and `{{project}}` so S3, CloudFront, and ACM resources show up consistently in AWS Cost Explorer and your org's tagging policy.
+
+## Related
+
+- [Deploying Apps](./deploying-apps) — Kubernetes workloads with git-push builds and rolling updates
+- [Installation](../getting-started/installation) — Install orka'i and connect resources

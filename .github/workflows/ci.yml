@@ -1,0 +1,141 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      web: ${{ steps.filter.outputs.web }}
+      docs: ${{ steps.filter.outputs.docs }}
+      docker: ${{ steps.filter.outputs.docker }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'apps/api/**'
+            web:
+              - 'apps/web/**'
+            docs:
+              - 'apps/docs/**'
+              - 'apps/api/internal/api/**'
+              - 'apps/api/internal/apidocs/**'
+              - 'apps/api/docs/**'
+              - 'Makefile'
+            docker:
+              - 'Dockerfile'
+              - 'apps/api/**'
+              - 'apps/web/**'
+              - 'package.json'
+              - 'bun.lock'
+              - 'bunfig.toml'
+
+  api:
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: apps/api/go.mod
+          cache: true
+          cache-dependency-path: |
+            apps/api/go.mod
+            apps/api/go.sum
+      - name: Build
+        run: cd apps/api && go build ./...
+      - name: Test with coverage
+        run: cd apps/api && go test -tags=integration -race -covermode=atomic -coverprofile=coverage.out -timeout 15m ./...
+      - name: Coverage gate
+        run: bash apps/api/scripts/coverage-gate.sh apps/api/coverage.out
+      - name: Coverage summary
+        run: cd apps/api && go tool cover -func=coverage.out | tail -1
+      # Non-blocking while baseline lint debt is cleared (unused helpers, bun.In deprecations).
+      - name: golangci-lint
+        continue-on-error: true
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.64.8
+          working-directory: apps/api
+          args: ./...
+      - name: Format check
+        run: |
+          cd apps/api
+          gofmt -l . | tee /tmp/fmt.out
+          test ! -s /tmp/fmt.out
+
+  web:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+      - name: Install
+        run: bun install --frozen-lockfile
+      - name: Lint
+        run: bunx biome check apps/web
+      - name: Test
+        run: cd apps/web && bun run test
+      - name: Build
+        run: cd apps/web && bun run build
+
+  docs:
+    needs: changes
+    if: needs.changes.outputs.docs == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: apps/api/go.mod
+          cache: true
+          cache-dependency-path: |
+            apps/api/go.mod
+            apps/api/go.sum
+      - name: Install swag
+        run: go install github.com/swaggo/swag/cmd/swag@v1.16.6
+      - name: Generate OpenAPI spec
+        run: make gen-api
+      - name: Verify OpenAPI spec is committed
+        run: git diff --exit-code apps/api/docs apps/docs/static/openapi.json
+      - uses: oven-sh/setup-bun@v2
+      - name: Install
+        run: bun install --frozen-lockfile
+      - name: Build docs
+        run: cd apps/docs && bun run build
+
+  docker:
+    needs: [changes, api, web, docs]
+    if: |
+      always() &&
+      needs.changes.outputs.docker == 'true' &&
+      (needs.api.result == 'success' || needs.api.result == 'skipped') &&
+      (needs.web.result == 'success' || needs.web.result == 'skipped') &&
+      (needs.docs.result == 'success' || needs.docs.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+      - name: Build (no push)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          build-args: VERSION=ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

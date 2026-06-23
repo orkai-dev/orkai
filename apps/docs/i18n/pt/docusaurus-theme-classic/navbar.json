@@ -1,0 +1,26 @@
+{
+  "title": {
+    "message": "orka'i",
+    "description": "The title in the navbar"
+  },
+  "logo.alt": {
+    "message": "logo do orka'i",
+    "description": "The alt text of navbar logo"
+  },
+  "item.label.Docs": {
+    "message": "Docs",
+    "description": "Navbar item with label Docs"
+  },
+  "item.label.Quick Start": {
+    "message": "Início rápido",
+    "description": "Navbar item with label Quick Start"
+  },
+  "item.label.GitHub": {
+    "message": "GitHub",
+    "description": "Navbar item with label GitHub"
+  },
+  "item.label.Self-host": {
+    "message": "Self-host",
+    "description": "Navbar item with label Self-host"
+  }
+}

@@ -1,0 +1,359 @@
+---
+sidebar_position: 4
+title: EBS Persistent Storage
+description: Provision durable AWS EBS volumes for app and database PVCs on EKS or K3s on EC2 — CSI driver, StorageClass, deploy-target defaults, per-volume overrides, and allowlists.
+keywords: [orkai, EBS, storage, PVC, EKS, K3s, EC2, CSI, gp3, persistent volume]
+---
+
+# EBS Persistent Storage
+
+orka'i provisions **Kubernetes PersistentVolumeClaims (PVCs)** for application volumes, managed databases, and the in-cluster registry. By default, PVCs use whatever StorageClass the cluster marks as default — on local dev that is usually `local-path` (node-local disk, not durable across node loss).
+
+To use **AWS EBS** (durable block storage), you install the EBS CSI driver on your cluster, create a StorageClass (for example `gp3`), and tell orka'i which class to use. orka'i never calls the EC2 API directly; the CSI driver provisions and attaches volumes when PVCs are created.
+
+This works on **Amazon EKS** and **self-managed K3s on EC2**. You do not need EKS specifically — any Kubernetes cluster whose worker nodes are EC2 instances in AWS can use EBS through the same CSI stack.
+
+:::tip New EC2 instance?
+Follow [EC2 Quickstart](./ec2-quickstart) for the full path: launch instance → attach IAM role → install orka'i → EBS CSI → StorageClass → deploy-target SQL.
+:::
+
+## How it works
+
+```text
+orka'i API  →  PVC (storageClassName: gp3)  →  EBS CSI driver  →  EBS volume  →  pod mount
+```
+
+1. orka'i creates a PVC with `storageClassName` resolved from the volume override, deploy-target default, or cluster default (see [Storage class resolution](#storage-class-resolution)).
+2. The **AWS EBS CSI driver** (`ebs.csi.aws.com`) provisions an EBS volume in the same region.
+3. Kubernetes schedules the pod on a node in the volume's availability zone and attaches the disk.
+
+## Prerequisites
+
+| Requirement | Notes |
+| ----------- | ----- |
+| EC2 worker nodes | EBS volumes attach to EC2 instances in the **same AWS region** |
+| EBS CSI driver | `aws-ebs-csi-driver` — EKS addon or Helm on K3s |
+| IAM permissions | CSI controller needs `CreateVolume`, `AttachVolume`, `DetachVolume`, `DeleteVolume`, etc. |
+| StorageClass | e.g. `gp3` with `allowVolumeExpansion: true` |
+| orka'i migration | Deploy target `config` column (included in recent releases) |
+
+**Not applicable:** local dev K3s in Docker (`make docker-up`) — nodes are not EC2-backed, so EBS cannot attach. Use the cluster default (`local-path`) for development.
+
+## Step 1 — Install the AWS EBS CSI driver
+
+Choose the path that matches your cluster.
+
+### Amazon EKS
+
+Install the managed addon (replace cluster name and region):
+
+```bash
+aws eks create-addon \
+  --cluster-name my-cluster \
+  --addon-name aws-ebs-csi-driver \
+  --region us-east-1
+```
+
+Configure **IAM Roles for Service Accounts (IRSA)** so the CSI controller can manage EBS volumes. AWS documents the exact trust policy and IAM policy for the `ebs-csi-controller-sa` service account in the [EBS CSI driver docs](https://docs.aws.amazon.com/eks/latest/userguide/ebs-csi.html).
+
+### K3s on EC2
+
+Install the driver with Helm on a cluster that already has worker nodes on EC2. On a production orka'i host (K3s installed by [get.orkai.dev](https://get.orkai.dev)), use the K3s kubeconfig:
+
+```bash
+helm repo add aws-ebs-csi-driver https://kubernetes-sigs.github.io/aws-ebs-csi-driver
+helm repo update
+
+sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml helm upgrade --install aws-ebs-csi-driver \
+  aws-ebs-csi-driver/aws-ebs-csi-driver \
+  --namespace kube-system \
+  --set controller.serviceAccount.create=true \
+  --set controller.serviceAccount.name=ebs-csi-controller-sa
+```
+
+Grant IAM permissions via the **EC2 instance profile** attached to each node — attach **`AmazonEBSCSIDriverPolicy`** to the instance role before creating volumes. IRSA works too if your K3s cluster has OIDC configured. See [EC2 Quickstart](./ec2-quickstart#step-0--launch-ec2) for the console steps.
+
+Verify the controller is running:
+
+```bash
+sudo k3s kubectl get pods -n kube-system -l app.kubernetes.io/name=aws-ebs-csi-driver
+```
+
+## Step 2 — Create a StorageClass
+
+Apply a StorageClass that uses the EBS CSI provisioner. This example creates `gp3` with encryption and volume expansion enabled:
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  encrypted: "true"
+allowVolumeExpansion: true
+volumeBindingMode: WaitForFirstConsumer
+```
+
+Save as `gp3-storageclass.yaml` and apply:
+
+```bash
+kubectl apply -f gp3-storageclass.yaml
+```
+
+`WaitForFirstConsumer` delays provisioning until a pod is scheduled, which helps place the volume in the correct availability zone.
+
+You can omit the default-class annotation if you prefer to set the class only in orka'i (see Step 3).
+
+List StorageClasses to confirm:
+
+```bash
+kubectl get storageclass
+```
+
+## Step 3 — Configure orka'i
+
+orka'i reads storage settings from the **deploy target** `config` column in Postgres. After running migrations, set `default_storage_class` (and optionally `allowed_storage_classes`) on your default target.
+
+### Deploy target config
+
+Full config shape:
+
+```json
+{
+  "default_storage_class": "gp3",
+  "allowed_storage_classes": ["gp3", "io2"]
+}
+```
+
+Set the default class only:
+
+```sql
+UPDATE deploy_targets
+SET config = jsonb_set(
+  COALESCE(config, '{}'::jsonb),
+  '{default_storage_class}',
+  '"gp3"'
+)
+WHERE is_default = true;
+```
+
+Set default and allowlist together:
+
+```sql
+UPDATE deploy_targets
+SET config = '{
+  "default_storage_class": "gp3",
+  "allowed_storage_classes": ["gp3", "io2"]
+}'::jsonb
+WHERE is_default = true;
+```
+
+Or replace the whole config object by target ID:
+
+```sql
+UPDATE deploy_targets
+SET config = '{"default_storage_class": "gp3"}'::jsonb
+WHERE id = '00000000-0000-4000-8000-000000000001';
+```
+
+Restart orka'i so bootstrap reloads the target config:
+
+```bash
+# Production install (Docker on EC2 — see EC2 Quickstart)
+sudo docker restart orkai
+
+# Other deployments
+systemctl restart orkai-api
+```
+
+On a production EC2 host, connect to Postgres with:
+
+```bash
+sudo docker exec -it orkai-postgres psql -U orkai -d orkai
+```
+
+When `default_storage_class` is empty, orka'i omits `storageClassName` on PVCs and the cluster default applies — same behavior as before this feature.
+
+### Allowed storage classes
+
+`allowed_storage_classes` is an optional allowlist of StorageClass names permitted on that deploy target.
+
+| Allowlist | Behavior |
+| --------- | -------- |
+| Empty or omitted | Any StorageClass in the cluster is allowed |
+| Non-empty | App volumes with a `storage_class` outside the list are rejected on save |
+
+The allowlist does **not** change the target default — it only restricts per-volume overrides. Managed databases and the in-cluster registry always use the target default (or cluster default when unset).
+
+In the UI, the Volumes tab dropdown shows only classes that exist in the cluster **and** appear in the allowlist (when configured). If the allowlist names classes that are not installed in the cluster, the dropdown shows a message instead of invalid options.
+
+### What gets EBS-backed
+
+Once configured, new PVCs created by orka'i use the resolved StorageClass:
+
+| Workload | PVC name pattern | Per-volume override |
+| -------- | ---------------- | ------------------- |
+| App volume | `{k8s-name}-{volume-name}` | Yes — optional `storage_class` on each volume |
+| Managed database | `{k8s-name}-data` | No — target default only |
+| In-cluster registry | `registry-data` (namespace `orkai-system`) | No — target default only |
+
+Existing PVCs are **not** retroactively changed. Only newly created claims pick up the StorageClass.
+
+## Storage class resolution
+
+For each PVC, orka'i picks the effective class in this order:
+
+1. **Volume override** — `storage_class` on the app volume (Volumes tab or API), when set
+2. **Target default** — `default_storage_class` on the deploy target
+3. **Cluster default** — Kubernetes default StorageClass (when both above are empty, `storageClassName` is omitted)
+
+Example: target default is `gp3`, volume override is `io2` → PVC uses `io2`. No override and no target default → cluster default (e.g. `local-path` in dev).
+
+## Per-volume storage class
+
+App volumes support an optional per-volume StorageClass from **Project → App → Volumes**:
+
+1. Add or edit a volume and choose **Storage Class** (optional).
+2. Leave it on **Target default (gp3)** or **Cluster default** to inherit from the deploy target or cluster.
+3. Save the app and redeploy so the PVC is created or updated.
+
+Each volume in the API accepts an optional `storage_class` field:
+
+```json
+{
+  "name": "data",
+  "mount_path": "/data",
+  "size": "10Gi",
+  "storage_class": "io2"
+}
+```
+
+Omit `storage_class` (or leave it empty) to use the target or cluster default. The bound class appears on each volume row in the UI and in **Admin → Infrastructure → Volumes**.
+
+## Admin API
+
+These endpoints help operators and automation inspect storage options. All require an authenticated admin session.
+
+**List cluster StorageClasses** — used by the Volumes tab selector:
+
+```http
+GET /api/v1/cluster/storage-classes
+```
+
+Response (array):
+
+```json
+[
+  {
+    "name": "gp3",
+    "provisioner": "ebs.csi.aws.com",
+    "is_default": true,
+    "allow_expansion": true
+  }
+]
+```
+
+**App deploy-target capabilities** — includes storage config for UI filtering:
+
+```http
+GET /api/v1/apps/{app_id}/capabilities
+```
+
+Relevant fields in the response:
+
+```json
+{
+  "default_storage_class": "gp3",
+  "allowed_storage_classes": ["gp3", "io2"]
+}
+```
+
+## Step 4 — Verify
+
+Create an app volume from the UI (**Project → App → Volumes**). Optionally pick a StorageClass, save, and redeploy. Then inspect the PVC:
+
+```bash
+kubectl get pvc -A
+kubectl describe pvc <pvc-name> -n <namespace>
+```
+
+You should see:
+
+- `StorageClass: gp3`
+- `Status: Bound`
+- A `VolumeHandle` pointing at an EBS volume ID (`vol-…`)
+
+In the AWS console, confirm an EBS volume exists in the same region and AZ as the scheduled pod.
+
+Admin → **Infrastructure → Volumes** in orka'i also shows `storage_class` on each PVC.
+
+## Volume expansion
+
+If the StorageClass has `allowVolumeExpansion: true` (recommended), you can grow PVCs from **Admin → Infrastructure → Volumes** or by increasing the size on an app volume and redeploying. EBS supports online expansion when the CSI driver and StorageClass allow it.
+
+Size **decreases** are not supported by Kubernetes or EBS.
+
+## Operational notes
+
+| Topic | Implication |
+| ----- | ----------- |
+| Access mode | orka'i uses `ReadWriteOnce` only — one node per volume |
+| Multi-replica apps | Each replica needs its own volume, or use EFS for shared storage |
+| Unmount vs delete | Unmounting from an app keeps the PVC; delete it from Admin → Volumes when no longer needed |
+| AZ placement | RWO EBS is AZ-scoped; pods must schedule in the volume's AZ. `WaitForFirstConsumer` helps |
+| Reclaim policy | Controlled by the StorageClass (`Delete` vs `Retain`). `Delete` removes the EBS volume when the PVC is deleted |
+
+## Troubleshooting
+
+### PVC stays Pending
+
+- CSI driver pods not running: `kubectl get pods -n kube-system -l app.kubernetes.io/name=aws-ebs-csi-driver`
+- IAM permissions missing on the CSI service account (EKS IRSA) or node instance role (K3s)
+- No StorageClass named `gp3` (or whatever you configured in orka'i)
+- Insufficient EBS quota in the AWS account
+
+### Pod cannot mount volume
+
+- Pod scheduled in a different AZ than the EBS volume
+- Node lacks permission to attach volumes (`ec2:AttachVolume`)
+
+### orka'i still uses local-path
+
+- Deploy target config not set or API not restarted after the SQL update
+- Check: `SELECT config FROM deploy_targets WHERE is_default = true;`
+- PVC was created **before** config was applied — delete and recreate (data loss unless you snapshot first)
+
+### Save rejected: storage class not allowed
+
+- The volume's `storage_class` is not in `allowed_storage_classes` for the app's deploy target
+- Fix: update the allowlist in Postgres, or choose a permitted class in the Volumes tab
+- Check: `SELECT config FROM deploy_targets WHERE id = '<target-id>';`
+
+### Storage class dropdown empty or missing classes
+
+- Allowlist is set but none of those classes exist in the cluster — install the StorageClass or adjust the allowlist
+- Compare `kubectl get storageclass` with `allowed_storage_classes` in deploy target config
+
+## Other cloud providers
+
+The same orka'i mechanism applies to any CSI-backed StorageClass — only the class name and cluster prerequisites change:
+
+| Provider | Example StorageClass | CSI provisioner |
+| -------- | -------------------- | --------------- |
+| AWS EBS | `gp3` | `ebs.csi.aws.com` |
+| GCP Persistent Disk | `pd-ssd` | `pd.csi.storage.gke.io` |
+| Azure Disk | `managed-csi` | `disk.csi.azure.com` |
+
+Set `default_storage_class` in the deploy target config to the class name defined in your cluster. Use `allowed_storage_classes` to restrict which classes app volumes may override.
+
+## Related
+
+- [EC2 Quickstart](./ec2-quickstart) — fresh EC2 instance through first EBS volume
+- App volumes and per-volume StorageClass: **Project → App → Volumes** tab
+- Cluster-wide PVC list: **Admin → Infrastructure → Volumes**
+- List StorageClasses via API: `GET /api/v1/cluster/storage-classes`
+- Local development uses node-local storage; EBS requires EC2-backed nodes in AWS

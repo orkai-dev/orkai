@@ -1,0 +1,23 @@
+{
+  "name": "orka'i Docs",
+  "short_name": "orka'i Docs",
+  "description": "Official documentation for orka'i — deploy apps, databases, and cron jobs with real Kubernetes on your own servers.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b1220",
+  "theme_color": "#0c1324",
+  "icons": [
+    {
+      "src": "/img/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/img/orca-fin-appicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

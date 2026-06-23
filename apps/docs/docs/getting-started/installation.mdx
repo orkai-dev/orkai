@@ -1,0 +1,65 @@
+---
+sidebar_position: 1
+title: Installation
+description: Install orka'i on your own Linux server — system requirements, one-line installer, and first boot steps.
+keywords: [orkai, installation, install, K3s, self-hosted, Linux, EC2]
+---
+
+# Installation
+
+orka'i installs on a Linux server with a single command. The installer sets up Docker, K3s (Kubernetes), PostgreSQL, and the orka'i control plane.
+
+## Requirements
+
+| Resource | Minimum |
+| -------- | ------- |
+| CPU | 2 cores |
+| RAM | 2 GB (4 GB recommended) |
+| Disk | 20 GB |
+| OS | Linux (amd64 / arm64) |
+| Ports | **80**, **443** (Traefik ingress), **3000** (panel) |
+
+## Install
+
+```bash
+curl -sSL https://get.orkai.dev | sudo sh
+```
+
+The script:
+
+1. Installs Docker and K3s on the host
+2. Waits for Traefik (built into K3s) on ports 80/443
+3. Generates secrets in `/opt/orkai/.env`
+4. Starts `orkai-postgres` and `orkai` via Docker Compose at `/opt/orkai/docker-compose.yml`
+
+When it completes, open the panel at `http://<server-ip>:3000` and create your admin account.
+
+### Useful paths (production install)
+
+| Path | Purpose |
+| ---- | ------- |
+| `/opt/orkai/.env` | Secrets and config |
+| `/opt/orkai/docker-compose.yml` | Compose file |
+| `/etc/rancher/k3s/k3s.yaml` | K3s kubeconfig (mounted into orka'i) |
+
+View logs:
+
+```bash
+sudo docker compose -f /opt/orkai/docker-compose.yml logs -f orkai
+```
+
+## AWS EC2
+
+For a **fresh EC2 instance** with **EBS persistent storage**, use the dedicated walkthrough — it covers IAM, security groups, the CSI driver, and orka'i storage config in order:
+
+→ **[EC2 Quickstart](../guides/ec2-quickstart)**
+
+## Local development
+
+For contributing or hacking on orka'i locally, use the monorepo Makefile (`make dev`) with K3s in Docker. That environment uses node-local `local-path` storage, not EBS. See the repository `CLAUDE.md` / `README`.
+
+## What's next
+
+- [EC2 Quickstart](../guides/ec2-quickstart) — AWS single-node setup with EBS
+- [Quick Start](./quick-start) — first project and deploy
+- [EBS Persistent Storage](../guides/ebs-storage) — storage classes and volume config
