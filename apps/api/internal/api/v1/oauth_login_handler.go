@@ -85,6 +85,7 @@ func (h *OAuthLoginHandler) Login(c *gin.Context) {
 
 	state, err := h.jwt.GenerateOAuthState(providerName)
 	if err != nil {
+		h.logger.Error("oauth state generation failed", slog.String("provider", providerName), slog.Any("error", err))
 		h.redirectToLogin(c, "oauth_failed")
 		return
 	}
@@ -118,6 +119,7 @@ func (h *OAuthLoginHandler) Callback(c *gin.Context) {
 
 	provider, err := h.registry.GetProvider(c.Request.Context(), providerName)
 	if err != nil {
+		h.logger.Error("oauth provider lookup failed", slog.String("provider", providerName), slog.Any("error", err))
 		h.redirectToLogin(c, oauthErrorCode(err))
 		return
 	}
@@ -132,6 +134,11 @@ func (h *OAuthLoginHandler) Callback(c *gin.Context) {
 
 	result, err := h.authSvc.LoginWithOAuth(c.Request.Context(), providerName, identity)
 	if err != nil {
+		h.logger.Error("oauth login failed",
+			slog.String("provider", providerName),
+			slog.String("email", identity.Email),
+			slog.Any("error", err),
+		)
 		h.redirectToLogin(c, oauthLoginErrorCode(err))
 		return
 	}
