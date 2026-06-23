@@ -55,3 +55,21 @@ func (c Credentials) AWSConfig(ctx context.Context, region string) (awssdk.Confi
 
 	return cfg, nil
 }
+
+// ResolveCredentials resolves concrete credentials for the configured auth mode.
+// For instance_role/assume_role this triggers an IMDS/STS call and returns
+// short-lived keys plus a session token; for static access keys it returns those
+// keys with an empty token. It is used to inject usable credentials into
+// environments that cannot resolve a role themselves (e.g. an in-cluster
+// aws-cli backup Job).
+func (c Credentials) ResolveCredentials(ctx context.Context, region string) (accessKeyID, secretAccessKey, sessionToken string, err error) {
+	cfg, err := c.AWSConfig(ctx, region)
+	if err != nil {
+		return "", "", "", err
+	}
+	creds, err := cfg.Credentials.Retrieve(ctx)
+	if err != nil {
+		return "", "", "", err
+	}
+	return creds.AccessKeyID, creds.SecretAccessKey, creds.SessionToken, nil
+}

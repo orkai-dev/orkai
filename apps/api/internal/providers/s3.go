@@ -70,7 +70,7 @@ func (p *awsS3Provider) newClient(ctx context.Context, cfg json.RawMessage) (*s3
 
 	awsCfg, err := awsconfig.LoadDefaultConfig(ctx,
 		awsconfig.WithRegion(s3Region(c.Region)),
-		awsconfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(c.AccessKey, c.SecretKey, "")),
+		awsconfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(c.AccessKey, c.SecretKey, c.SessionToken)),
 	)
 	if err != nil {
 		return nil, orchestrator.S3Config{}, fmt.Errorf("load aws config: %w", err)
@@ -213,13 +213,19 @@ func (p *awsS3Provider) jobEnv(cfg json.RawMessage) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return map[string]string{
+	env := map[string]string{
 		"AWS_ACCESS_KEY_ID":     c.AccessKey,
 		"AWS_SECRET_ACCESS_KEY": c.SecretKey,
 		"AWS_DEFAULT_REGION":    s3Region(c.Region),
 		"S3_ENDPOINT":           c.Endpoint,
 		"S3_BUCKET":             c.Bucket,
-	}, nil
+	}
+	// Temporary credentials (instance role / assumed role) require the session
+	// token alongside the access keys for the in-cluster aws-cli Job to auth.
+	if c.SessionToken != "" {
+		env["AWS_SESSION_TOKEN"] = c.SessionToken
+	}
+	return env, nil
 }
 
 func (p *awsS3Provider) UploadJob(cfg json.RawMessage, srcPath, key string) (orchestrator.ObjectTransfer, error) {

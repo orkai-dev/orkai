@@ -319,7 +319,10 @@ type S3Config struct {
 	Bucket    string `json:"bucket"`
 	AccessKey string `json:"access_key"`
 	SecretKey string `json:"secret_key"`
-	Region    string `json:"region"`
+	// SessionToken is set for temporary credentials (e.g. resolved from an EC2
+	// instance role or an assumed role). Empty for static long-lived keys.
+	SessionToken string `json:"session_token,omitempty"`
+	Region       string `json:"region"`
 }
 
 // ObjectTransfer describes an in-cluster object-storage transfer container used

@@ -488,7 +488,15 @@ func (s *ResourceService) ListBuckets(ctx context.Context, orgID, id uuid.UUID) 
 	if resource.Provider != "aws" {
 		return nil, apierr.ErrValidation.WithDetail("listing buckets is only supported for AWS cloud accounts")
 	}
-	return pagesaws.New().ListBuckets(ctx, creds)
+	buckets, err := pagesaws.New().ListBuckets(ctx, creds)
+	if err != nil {
+		// Surface the underlying AWS error (e.g. AccessDenied on
+		// s3:ListAllMyBuckets, or missing instance-role credentials) as a 4xx so
+		// the UI shows the cause instead of an opaque 500. The operator can still
+		// type a known bucket name by hand when listing is denied.
+		return nil, apierr.ErrBadRequest.WithDetail(err.Error())
+	}
+	return buckets, nil
 }
 
 // expandS3FromCloudAccount normalizes an aws_s3 object-storage config that
@@ -526,10 +534,6 @@ func (s *ResourceService) expandS3FromCloudAccount(ctx context.Context, orgID uu
 	}
 	if resource.Provider != "aws" {
 		return nil, apierr.ErrValidation.WithDetail("selected cloud account is not an AWS account")
-	}
-	if !creds.UseStaticKeys() {
-		return nil, apierr.ErrValidation.WithDetail(
-			"selected AWS account does not use static access keys; object storage requires an access-key account")
 	}
 
 	region := in.Region
@@ -606,11 +610,28 @@ func resolveObjectStorageConfig(ctx context.Context, st store.Store, orgID uuid.
 	if err := json.Unmarshal(account.Config, &creds); err != nil {
 		return nil, fmt.Errorf("invalid cloud account config")
 	}
-	if !creds.UseStaticKeys() {
-		return nil, fmt.Errorf("cloud account %q does not use static access keys; object storage requires an access-key account", account.Name)
+	if creds.UseStaticKeys() {
+		m["access_key"] = creds.AccessKeyID
+		m["secret_key"] = creds.SecretAccessKey
+	} else {
+		// Role-based account (EC2 instance role / assume role): resolve concrete,
+		// short-lived credentials now so both the SDK path and the in-cluster
+		// aws-cli Job get usable keys plus a session token. Never persisted —
+		// resolution happens fresh on every use.
+		region, _ := m["region"].(string)
+		if region == "" {
+			region = creds.DefaultRegion
+		}
+		ak, sk, token, rerr := creds.ResolveCredentials(ctx, region)
+		if rerr != nil {
+			return nil, fmt.Errorf("resolve credentials for cloud account %q: %w", account.Name, rerr)
+		}
+		m["access_key"] = ak
+		m["secret_key"] = sk
+		if token != "" {
+			m["session_token"] = token
+		}
 	}
-	m["access_key"] = creds.AccessKeyID
-	m["secret_key"] = creds.SecretAccessKey
 	out, err := json.Marshal(m)
 	if err != nil {
 		return nil, err
