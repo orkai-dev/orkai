@@ -11,6 +11,7 @@ SRC_DIR="$INSTALL_DIR/src"
 BIN_DIR="$INSTALL_DIR/bin"
 ENV_FILE="$INSTALL_DIR/.env"
 SERVICE_FILE="/etc/systemd/system/orkai.service"
+WORKER_SERVICE_FILE="/etc/systemd/system/orkai-worker.service"
 
 GO_VERSION="1.25.0"
 BUN_VERSION="latest"
@@ -381,7 +382,7 @@ Environment=SETUP_SECRET=${SETUP_SECRET}
 Environment=K8S_IN_CLUSTER=false
 Environment=KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 Environment=APP_URL=http://${SERVER_IP}:3000
-Environment=SERVER_PORT=8080
+Environment=SERVER_PORT=3000
 Environment=WEB_DIST_DIR=$SRC_DIR/apps/web/dist
 Environment=GIN_MODE=release
 
@@ -389,9 +390,38 @@ Environment=GIN_MODE=release
 WantedBy=multi-user.target
 EOF
 
+    # Worker: consumes the PGMQ job queue (deploys, page/worker deploys, backups).
+    # Without it, those operations queue forever and never run.
+    cat > "$WORKER_SERVICE_FILE" <<EOF
+[Unit]
+Description=Orkai PaaS Worker
+After=network.target postgresql.service k3s.service orkai.service
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=$INSTALL_DIR
+ExecStart=$BIN_DIR/orkai-worker
+Restart=on-failure
+RestartSec=5
+
+Environment=DATABASE_URL=postgres://orkai:${DB_PASSWORD}@127.0.0.1:5432/orkai?sslmode=disable
+Environment=JWT_SECRET=${JWT_SECRET}
+Environment=SETUP_SECRET=${SETUP_SECRET}
+Environment=K8S_IN_CLUSTER=false
+Environment=KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+Environment=APP_URL=http://${SERVER_IP}:3000
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
     systemctl daemon-reload
     systemctl enable orkai >/dev/null 2>&1
+    systemctl enable orkai-worker >/dev/null 2>&1
     systemctl restart orkai
+    systemctl restart orkai-worker
 
     info "Waiting for Orkai to be ready..."
     for i in $(seq 1 60); do
@@ -418,12 +448,12 @@ summary() {
     printf "  ${BOLD}Source:${NC}    %s\n" "$SRC_DIR"
     printf "  ${BOLD}Binaries:${NC}  %s\n" "$BIN_DIR"
     printf "  ${BOLD}Config:${NC}    %s\n" "$ENV_FILE"
-    printf "  ${BOLD}Logs:${NC}      journalctl -u orkai -f\n"
-    printf "  ${BOLD}Restart:${NC}   systemctl restart orkai\n"
+    printf "  ${BOLD}Logs:${NC}      journalctl -u orkai -u orkai-worker -f\n"
+    printf "  ${BOLD}Restart:${NC}   systemctl restart orkai orkai-worker\n"
     printf "\n"
     printf "  ${BOLD}Upgrade:${NC}\n"
     printf "    cd %s && git pull && make build\n" "$SRC_DIR"
-    printf "    systemctl restart orkai\n"
+    printf "    systemctl restart orkai orkai-worker\n"
     printf "\n"
     printf "  ${BOLD}Port usage:${NC}\n"
     printf "    :3000  → Orkai panel (served by API)\n"

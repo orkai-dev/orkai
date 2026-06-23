@@ -2,6 +2,10 @@ package server
 
 import (
 	"log/slog"
+	"net/http"
+	"path"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -23,6 +27,7 @@ type RouterDeps struct {
 	SSEBroker   *ws.SSEBroker
 	AppURL      string // Public URL of the Orkai instance
 	SetupSecret string // Secret for unauthenticated setup operations
+	WebDistDir  string // If set, serve the web SPA from this directory (native installs)
 	Logger      *slog.Logger
 }
 
@@ -431,5 +436,45 @@ func NewRouter(deps *RouterDeps) *gin.Engine {
 		}
 	}
 
+	// Static web UI (SPA). Only enabled when a dist dir is configured, which is
+	// the case for native/from-source installs. In the Docker image, Caddy
+	// serves the SPA and proxies /api, /ws, /healthz to this server instead.
+	if deps.WebDistDir != "" {
+		registerSPA(r, deps.WebDistDir)
+	}
+
 	return r
+}
+
+// registerSPA serves the built web app from distDir, falling back to
+// index.html for client-side routes. API/WS/health paths are excluded so they
+// keep returning a real 404 instead of the SPA shell.
+func registerSPA(r *gin.Engine, distDir string) {
+	indexPath := filepath.Join(distDir, "index.html")
+	root := http.Dir(distDir)
+	fileServer := http.FileServer(root)
+
+	r.NoRoute(func(c *gin.Context) {
+		reqPath := c.Request.URL.Path
+		if strings.HasPrefix(reqPath, "/api/") ||
+			strings.HasPrefix(reqPath, "/ws/") ||
+			reqPath == "/healthz" {
+			c.JSON(http.StatusNotFound, gin.H{"detail": "not found"})
+			return
+		}
+
+		// Serve the requested asset if it exists on disk; otherwise fall back to
+		// the SPA entry point so the client router can handle the route.
+		if reqPath != "/" {
+			if f, err := root.Open(strings.TrimPrefix(path.Clean(reqPath), "/")); err == nil {
+				info, statErr := f.Stat()
+				_ = f.Close()
+				if statErr == nil && !info.IsDir() {
+					fileServer.ServeHTTP(c.Writer, c.Request)
+					return
+				}
+			}
+		}
+		c.File(indexPath)
+	})
 }

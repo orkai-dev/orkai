@@ -22,6 +22,7 @@ type ServerConfig struct {
 	Port            int
 	ShutdownTimeout time.Duration
 	AppURL          string // Public URL of the Orkai instance (e.g. https://orkai.example.com)
+	WebDistDir      string // If set, the server serves the web SPA from this dir (native installs; Docker uses Caddy)
 }
 
 type DatabaseConfig struct {
@@ -53,6 +54,7 @@ func Load() (*Config, error) {
 			Port:            envInt("SERVER_PORT", 8080),
 			ShutdownTimeout: envDuration("SERVER_SHUTDOWN_TIMEOUT", 15*time.Second),
 			AppURL:          envStr("APP_URL", "http://localhost:3000"),
+			WebDistDir:      envStr("WEB_DIST_DIR", ""),
 		},
 		Database: DatabaseConfig{
 			URL:             envStr("DATABASE_URL", "postgres://orkai:orkai@localhost:5433/orkai?sslmode=disable"),

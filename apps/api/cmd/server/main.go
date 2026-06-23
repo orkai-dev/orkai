@@ -169,6 +169,7 @@ func main() {
 		SSEBroker:   sseBroker,
 		AppURL:      cfg.Server.AppURL,
 		SetupSecret: cfg.Auth.SetupSecret,
+		WebDistDir:  cfg.Server.WebDistDir,
 		Logger:      logger,
 	})
 
