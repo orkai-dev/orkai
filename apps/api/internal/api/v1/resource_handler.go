@@ -185,6 +185,35 @@ func (h *ResourceHandler) ListRepos(c *gin.Context) {
 	httputil.RespondOK(c, repos)
 }
 
+// SearchRepos godoc
+// @Summary      Search Git repositories
+// @Tags         resources
+// @Description  Requires admin role.
+// @Produce      json
+// @Param        id path string true "Resource ID"
+// @Param        q query string false "Search query"
+// @Success      200 {array} object
+// @Failure      403 {object} apidocs.ProblemDetail
+// @Security     BearerAuth
+// @Router       /resources/{id}/repos/search [get]
+func (h *ResourceHandler) SearchRepos(c *gin.Context) {
+	orgID := middleware.GetOrgID(c)
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		httputil.RespondError(c, apierr.ErrBadRequest.WithDetail("invalid resource ID"))
+		return
+	}
+	repos, err := h.svc.SearchRepos(c.Request.Context(), orgID, id, c.Query("q"))
+	if err != nil {
+		httputil.RespondError(c, err)
+		return
+	}
+	if repos == nil {
+		repos = []service.GitRepo{}
+	}
+	httputil.RespondOK(c, repos)
+}
+
 // ListBuckets returns the S3 buckets visible to a cloud_account resource.
 // ListBuckets godoc
 // @Summary      List S3 buckets

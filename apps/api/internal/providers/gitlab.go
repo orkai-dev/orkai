@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -48,6 +49,14 @@ func (p *gitlabProvider) CloneToken(ctx context.Context, repoURL string, cfg jso
 }
 
 func (p *gitlabProvider) ListRepos(ctx context.Context, cfg json.RawMessage) ([]GitRepo, error) {
+	return p.searchRepos(ctx, cfg, "")
+}
+
+func (p *gitlabProvider) SearchRepos(ctx context.Context, cfg json.RawMessage, query string) ([]GitRepo, error) {
+	return p.searchRepos(ctx, cfg, query)
+}
+
+func (p *gitlabProvider) searchRepos(ctx context.Context, cfg json.RawMessage, query string) ([]GitRepo, error) {
 	var c gitlabConfig
 	if err := json.Unmarshal(cfg, &c); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
@@ -57,7 +66,8 @@ func (p *gitlabProvider) ListRepos(ctx context.Context, cfg json.RawMessage) ([]
 		apiURL = "https://gitlab.com"
 	}
 
-	req, _ := http.NewRequest("GET", apiURL+"/api/v4/projects?membership=true&per_page=100&order_by=updated_at", nil)
+	params := fmt.Sprintf("/api/v4/projects?membership=true&per_page=50&order_by=updated_at&search=%s", url.QueryEscape(query))
+	req, _ := http.NewRequestWithContext(ctx, "GET", apiURL+params, nil)
 	req.Header.Set("PRIVATE-TOKEN", c.Token)
 
 	resp, err := p.client.Do(req)

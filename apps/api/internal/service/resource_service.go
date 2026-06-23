@@ -648,6 +648,34 @@ func (s *ResourceService) ListRepos(ctx context.Context, orgID, resourceID uuid.
 	return gp.ListRepos(ctx, resource.Config)
 }
 
+// SearchRepos queries repositories from a git provider by name (server-side
+// search). Token refresh logic mirrors ListRepos.
+func (s *ResourceService) SearchRepos(ctx context.Context, orgID, resourceID uuid.UUID, query string) ([]GitRepo, error) {
+	resource, err := s.getOwnedResource(ctx, orgID, resourceID)
+	if err != nil {
+		return nil, err
+	}
+	if resource.Type != model.ResourceGitProvider {
+		return nil, fmt.Errorf("resource is not a git provider")
+	}
+
+	gp, err := s.providers.Git(resource.Provider)
+	if err != nil {
+		return nil, err
+	}
+
+	if updated, changed, rerr := gp.Refresh(ctx, resource.Config); rerr != nil {
+		s.logger.Error("failed to refresh git token", slog.Any("error", rerr), slog.String("resource", resource.Name))
+	} else if changed {
+		resource.Config = updated
+		if uerr := s.store.SharedResources().Update(ctx, resource); uerr != nil {
+			s.logger.Error("failed to persist refreshed git token", slog.Any("error", uerr), slog.String("resource", resource.Name))
+		}
+	}
+
+	return gp.SearchRepos(ctx, resource.Config, query)
+}
+
 func (s *ResourceService) cloudAccountCredentials(ctx context.Context, orgID, id uuid.UUID) (*model.SharedResource, pages.Credentials, error) {
 	resource, err := s.getOwnedResource(ctx, orgID, id)
 	if err != nil {

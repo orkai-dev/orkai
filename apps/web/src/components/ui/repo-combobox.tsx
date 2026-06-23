@@ -62,6 +62,8 @@ export function RepoCombobox({
   onSelect,
   disabled,
   placeholder = "Search repositories...",
+  onQueryChange,
+  loading,
 }: {
   repos: GitRepo[];
   /** Selected repo's full_name. */
@@ -69,6 +71,9 @@ export function RepoCombobox({
   onSelect: (repo: GitRepo) => void;
   disabled?: boolean;
   placeholder?: string;
+  /** When set, search is driven server-side; local filtering still highlights matches. */
+  onQueryChange?: (q: string) => void;
+  loading?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -80,7 +85,8 @@ export function RepoCombobox({
   const selected = repos.find((r) => r.full_name === value);
 
   const scored = useMemo(() => scoreRepos(repos, query), [repos, query]);
-  const visible = scored.slice(0, MAX_RENDERED);
+  const serverSearch = !!onQueryChange;
+  const visible = serverSearch ? scored : scored.slice(0, MAX_RENDERED);
 
   // Close on outside click.
   useEffect(() => {
@@ -164,8 +170,10 @@ export function RepoCombobox({
               ref={inputRef}
               value={query}
               onChange={(e) => {
-                setQuery(e.target.value);
+                const next = e.target.value;
+                setQuery(next);
                 setActive(0);
+                onQueryChange?.(next);
               }}
               onKeyDown={onKeyDown}
               placeholder={placeholder}
@@ -174,7 +182,9 @@ export function RepoCombobox({
           </div>
 
           <div ref={listRef} className="max-h-[280px] overflow-y-auto p-1">
-            {visible.length === 0 ? (
+            {loading ? (
+              <p className="px-3 py-6 text-center text-sm text-muted-foreground">Searching...</p>
+            ) : visible.length === 0 ? (
               <p className="px-3 py-6 text-center text-sm text-muted-foreground">
                 No repositories match “{query}”.
               </p>
@@ -206,7 +216,7 @@ export function RepoCombobox({
             )}
           </div>
 
-          {scored.length > MAX_RENDERED && (
+          {!serverSearch && scored.length > MAX_RENDERED && (
             <div className="border-t px-3 py-1.5 text-center text-xs text-muted-foreground">
               Showing {MAX_RENDERED} of {scored.length} — keep typing to narrow results
             </div>

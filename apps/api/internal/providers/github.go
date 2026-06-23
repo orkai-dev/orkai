@@ -151,6 +151,152 @@ func (p *githubProvider) ListRepos(ctx context.Context, cfg json.RawMessage) ([]
 	return repos, nil
 }
 
+func (p *githubProvider) SearchRepos(ctx context.Context, cfg json.RawMessage, query string) ([]GitRepo, error) {
+	var c githubConfig
+	if err := json.Unmarshal(cfg, &c); err != nil {
+		return nil, fmt.Errorf("invalid config: %w", err)
+	}
+	repos, err := p.searchRepos(c.Token, c.Org, c.Username, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search repositories: %w — the token may have expired, try reconnecting in Resources", err)
+	}
+	return repos, nil
+}
+
+const githubSearchPerPage = 50
+
+type githubRepoJSON struct {
+	Name          string `json:"name"`
+	FullName      string `json:"full_name"`
+	CloneURL      string `json:"clone_url"`
+	DefaultBranch string `json:"default_branch"`
+	Private       bool   `json:"private"`
+}
+
+func (p *githubProvider) searchRepos(token, org, username, query string) ([]GitRepo, error) {
+	if strings.TrimSpace(query) == "" {
+		return p.listReposFirstPage(token, org)
+	}
+	return p.searchReposAPI(token, org, username, query)
+}
+
+func (p *githubProvider) listReposFirstPage(token, org string) ([]GitRepo, error) {
+	installationID, err := p.findInstallation(token, org)
+	if err != nil || installationID == 0 {
+		return p.listReposFallbackPage(token, org, 1)
+	}
+
+	apiURL := fmt.Sprintf(
+		"https://api.github.com/user/installations/%d/repositories?per_page=%d&page=1",
+		installationID, githubSearchPerPage,
+	)
+	status, body, err := p.getJSON(apiURL, token)
+	if err != nil {
+		return nil, err
+	}
+	if status == 401 || status == 403 {
+		return nil, fmt.Errorf("GitHub token expired or revoked (HTTP %d) — please reconnect in Resources", status)
+	}
+
+	var result struct {
+		Repositories []githubRepoJSON `json:"repositories"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, nil
+	}
+	return mapGitHubRepos(result.Repositories), nil
+}
+
+func (p *githubProvider) listReposFallbackPage(token, org string, page int) ([]GitRepo, error) {
+	var apiURL string
+	if org != "" {
+		apiURL = fmt.Sprintf(
+			"https://api.github.com/user/repos?per_page=%d&page=%d&sort=updated&affiliation=organization_member",
+			githubSearchPerPage, page,
+		)
+	} else {
+		apiURL = fmt.Sprintf(
+			"https://api.github.com/user/repos?per_page=%d&page=%d&sort=updated&affiliation=owner,collaborator",
+			githubSearchPerPage, page,
+		)
+	}
+	status, body, err := p.getJSON(apiURL, token)
+	if err != nil {
+		return nil, err
+	}
+	if status == 401 || status == 403 {
+		return nil, fmt.Errorf("GitHub token expired or revoked (HTTP %d) — please reconnect in Resources", status)
+	}
+
+	var repos []githubRepoJSON
+	if err := json.Unmarshal(body, &repos); err != nil {
+		return nil, nil
+	}
+	var out []GitRepo
+	for _, r := range repos {
+		if org != "" && !strings.HasPrefix(r.FullName, org+"/") {
+			continue
+		}
+		out = append(out, GitRepo{
+			Name:          r.Name,
+			FullName:      r.FullName,
+			CloneURL:      r.CloneURL,
+			DefaultBranch: r.DefaultBranch,
+			Private:       r.Private,
+		})
+	}
+	return out, nil
+}
+
+func (p *githubProvider) searchReposAPI(token, org, username, query string) ([]GitRepo, error) {
+	qualifier := ""
+	if org != "" {
+		qualifier = "org:" + org
+	} else if username != "" {
+		qualifier = "user:" + username
+	}
+	searchQ := strings.TrimSpace(query)
+	if qualifier != "" {
+		searchQ = qualifier + " " + searchQ
+	}
+	searchQ += " in:name fork:true"
+
+	params := url.Values{}
+	params.Set("per_page", strconv.Itoa(githubSearchPerPage))
+	params.Set("q", searchQ)
+	apiURL := "https://api.github.com/search/repositories?" + params.Encode()
+
+	status, body, err := p.getJSON(apiURL, token)
+	if err != nil {
+		return nil, err
+	}
+	if status == 401 || status == 403 {
+		return nil, fmt.Errorf("GitHub token expired or revoked (HTTP %d) — please reconnect in Resources", status)
+	}
+
+	var result struct {
+		Items []githubRepoJSON `json:"items"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, nil
+	}
+	return mapGitHubRepos(result.Items), nil
+}
+
+func mapGitHubRepos(repos []githubRepoJSON) []GitRepo {
+	var out []GitRepo
+	for _, r := range repos {
+		out = append(out, GitRepo{
+			Name:          r.Name,
+			FullName:      r.FullName,
+			CloneURL:      r.CloneURL,
+			DefaultBranch: r.DefaultBranch,
+			Private:       r.Private,
+		})
+	}
+	return out
+}
+
 // getJSON performs an authenticated GET and returns the status and body,
 // closing the response body before returning.
 func (p *githubProvider) getJSON(url, token string) (int, []byte, error) {

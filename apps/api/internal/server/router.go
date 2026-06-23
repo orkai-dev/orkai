@@ -421,6 +421,7 @@ func NewRouter(deps *RouterDeps) *gin.Engine {
 			adminOnly.POST("/resources", resourceHandler.Create)
 			adminOnly.POST("/resources/generate-ssh-key", resourceHandler.GenerateSSHKey)
 			adminOnly.GET("/resources/:id/repos", resourceHandler.ListRepos)
+			adminOnly.GET("/resources/:id/repos/search", resourceHandler.SearchRepos)
 			adminOnly.GET("/resources/:id/buckets", resourceHandler.ListBuckets)
 			adminOnly.PATCH("/resources/:id", resourceHandler.Update)
 			adminOnly.DELETE("/resources/:id", resourceHandler.Delete)

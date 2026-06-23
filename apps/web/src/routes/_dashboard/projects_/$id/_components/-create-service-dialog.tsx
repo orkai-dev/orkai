@@ -12,7 +12,7 @@ import {
   Network,
   Zap,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -26,7 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useDatabaseVersions } from "@/features/databases";
-import { type GitRepo, useDnsZones, useGitRepos, useResources } from "@/features/resources";
+import { type GitRepo, useDnsZones, useSearchGitRepos, useResources } from "@/features/resources";
 import type { SharedResource } from "@/features/resources/types";
 import { ENGINE_LABELS } from "@/lib/constants";
 
@@ -571,11 +571,32 @@ export function GitSourceFields({
 }) {
   const [selectedProviderId, setSelectedProviderId] = useState("");
   const [selectedRepoName, setSelectedRepoName] = useState("");
-  const { data: repos, isLoading: loadingRepos } = useGitRepos(selectedProviderId);
+  const [repoQuery, setRepoQuery] = useState("");
+  const [debouncedRepoQuery, setDebouncedRepoQuery] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const { data: repos, isLoading: loadingRepos, isFetching: fetchingRepos } = useSearchGitRepos(
+    selectedProviderId,
+    debouncedRepoQuery,
+  );
+  const searchingRepos = loadingRepos || fetchingRepos;
+
+  useEffect(() => {
+    return () => clearTimeout(debounceRef.current);
+  }, []);
+
+  function handleRepoQueryChange(value: string) {
+    setRepoQuery(value);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedRepoQuery(value), 300);
+  }
 
   function handleProviderChange(providerId: string) {
     setSelectedProviderId(providerId);
     setSelectedRepoName("");
+    setRepoQuery("");
+    setDebouncedRepoQuery("");
+    clearTimeout(debounceRef.current);
     onChange({ ...form, git_repo: "", git_branch: "main", git_provider_id: providerId });
   }
 
@@ -626,21 +647,19 @@ export function GitSourceFields({
       {selectedProviderId ? (
         <div className="space-y-2">
           <Label>Repository</Label>
-          {loadingRepos ? (
-            <div className="flex h-9 items-center rounded-md border px-3 text-sm text-muted-foreground">
-              Loading repositories...
-            </div>
-          ) : repos && repos.length > 0 ? (
-            <>
-              <RepoCombobox repos={repos} value={selectedRepoName} onSelect={handleRepoSelect} />
-              <p className="text-xs text-muted-foreground">
-                {repos.length} repositor{repos.length === 1 ? "y" : "ies"} available
-              </p>
-            </>
-          ) : (
+          <RepoCombobox
+            repos={repos ?? []}
+            value={selectedRepoName}
+            onSelect={handleRepoSelect}
+            onQueryChange={handleRepoQueryChange}
+            loading={searchingRepos}
+          />
+          {!searchingRepos && (repos?.length ?? 0) === 0 && (
             <div className="space-y-2">
               <p className="text-xs text-muted-foreground">
-                No repositories found or failed to load.
+                {repoQuery.trim()
+                  ? "No repositories match your search."
+                  : "No repositories found or failed to load."}
               </p>
               <Input
                 className="border-border bg-background"

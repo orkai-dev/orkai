@@ -42,6 +42,9 @@ type GitProvider interface {
 	TestConnection(ctx context.Context, cfg json.RawMessage) (bool, string, error)
 	// ListRepos lists repositories the credentials can access.
 	ListRepos(ctx context.Context, cfg json.RawMessage) ([]GitRepo, error)
+	// SearchRepos returns repos matching query (capped, e.g. 50). An empty
+	// query returns a recent/first-page list for the initial dropdown state.
+	SearchRepos(ctx context.Context, cfg json.RawMessage, query string) ([]GitRepo, error)
 	// Refresh returns an updated config when credentials were rotated (e.g. an
 	// OAuth access token refreshed before expiry). changed reports whether the
 	// caller should persist the returned config. A nil error with changed=false

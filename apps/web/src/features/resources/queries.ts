@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import type {
@@ -84,11 +84,16 @@ export function useGenerateSSHKey() {
   });
 }
 
-export function useGitRepos(resourceId: string) {
+export function useSearchGitRepos(resourceId: string, query: string) {
   return useQuery({
-    queryKey: ["resources", resourceId, "repos"] as const,
-    queryFn: () => api.get<GitRepo[]>(`/api/v1/resources/${resourceId}/repos`),
+    queryKey: ["resources", resourceId, "repos", "search", query] as const,
+    queryFn: () =>
+      api.get<GitRepo[]>(
+        `/api/v1/resources/${resourceId}/repos/search?q=${encodeURIComponent(query)}`,
+      ),
     enabled: !!resourceId,
+    staleTime: 30_000,
+    placeholderData: keepPreviousData,
   });
 }
 
